@@ -1,0 +1,29 @@
+#######################################
+# Syntax Coloring Map For FastBot
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+FastBot	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+setChatID	KEYWORD2
+attach	KEYWORD2
+detach	KEYWORD2
+tickManual	KEYWORD2
+tick	KEYWORD2
+sendMessage	KEYWORD2
+showMenu	KEYWORD2
+closeMenu	KEYWORD2
+inlineMenu	KEYWORD2
+sendRequest	KEYWORD2
+autoIncrement	KEYWORD2
+incrementID	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
