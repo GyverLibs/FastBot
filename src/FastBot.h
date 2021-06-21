@@ -18,6 +18,7 @@
 
     Версии:
     v1.0 - релиз
+    v1.1 - оптимизация
 */
 
 /*
@@ -92,7 +93,7 @@ public:
         String request = _request + "/sendMessage?chat_id=" + _chatID + "&text=" + msg;
         return sendRequest(request);
     }
-    uint8_t sendMessage(String msg) {
+    uint8_t sendMessage(String& msg) {
         return sendMessage(msg.c_str());
     }
 
@@ -108,7 +109,7 @@ public:
         request += "\"]],\"resize_keyboard\":true}";
         return sendRequest(request);
     }
-    uint8_t showMenu(String str) {
+    uint8_t showMenu(String& str) {
         return showMenu(str.c_str());
     }
     
@@ -141,7 +142,7 @@ public:
         return sendRequest(request);
     }
 
-    uint8_t inlineMenu(String msg, String str) {
+    uint8_t inlineMenu(String& msg, String& str) {
         return inlineMenu(msg.c_str(), str.c_str());
     }
     
