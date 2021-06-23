@@ -53,8 +53,8 @@ FastBot bot(BOT_TOKEN);
 // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
 FastBot(String token, int limit = 10, int ovf = 10000, int period = 1000);
 
-void setChatID(String chatID);                  // установка ID чата для парсинга сообщений (String)
-void setChatID(const char* chatID);             // установка ID чата для парсинга сообщений (char*)
+void setChatID(String chatID);                  // установка ID чата для парсинга сообщений (String). Можно указать несколько через запятую
+void setChatID(const char* chatID);             // установка ID чата для парсинга сообщений (char*). Можно указать несколько через запятую
 void attach(void (*handler)(String&, String&)); // подключение обработчика сообщений
 void detach();                                  // отключение обработчика сообщений
 uint8_t tickManual();                           // ручная проверка обновлений
@@ -153,6 +153,7 @@ void loop() {
 ## Версии
 - v1.0
 - v1.1 - оптимизация
+- v1.2 - можно задать несколько chatID
 
 <a id="feedback"></a>
 ## Баги и обратная связь

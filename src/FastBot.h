@@ -19,6 +19,7 @@
     Версии:
     v1.0 - релиз
     v1.1 - оптимизация
+    v1.2 - можно задать несколько chatID
 */
 
 /*
@@ -50,10 +51,12 @@ public:
         client->setInsecure();
     }
     
-    // установка ID чата для парсинга сообщений
+    // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
     void setChatID(String chatID) {
         _chatID = chatID;
     }
+    
+    // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
     void setChatID(const char* chatID) {
         _chatID = chatID;
     }
@@ -201,7 +204,7 @@ private:
                     endPos = str.indexOf(",\"", textPos);
                     String chatID = str.substring(textPos + 13, endPos);
                     textPos = endPos;
-                    if (!chatID.equals(_chatID)) continue;  // не тот чат
+                    if (_chatID.indexOf(chatID) < 0) continue;  // не тот чат
                 }
 
                 // ищем имя юзера
