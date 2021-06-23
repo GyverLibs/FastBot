@@ -38,9 +38,10 @@ ESP8266
 <a id="init"></a>
 ## Инициализация
 ```cpp
-FastBot bot(BOT_TOKEN);
-
-//FastBot bot(токен, лимит, порог, период);
+FastBot bot(токен);
+FastBot bot(токен, лимит);
+FastBot bot(токен, лимит, порог);
+FastBot bot(токен, лимит, порог, период);
 // токен - уникальный код бота, берётся у BotFather
 // лимит - количество сообщений, получаемое из одного запроса (по умолч. 10)
 // порог - количество символов, при котором API запрос будет считаться слишком большим и будет пропущен (по умолч. 10000)
@@ -50,25 +51,25 @@ FastBot bot(BOT_TOKEN);
 <a id="usage"></a>
 ## Использование
 ```cpp
-// инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
-FastBot(String token, int limit = 10, int ovf = 10000, int period = 1000);
-
-void setChatID(String chatID);                  // установка ID чата для парсинга сообщений (String). Можно указать несколько через запятую
-void setChatID(const char* chatID);             // установка ID чата для парсинга сообщений (char*). Можно указать несколько через запятую
+void setChatID(String chatID);                  // установка ID чата для парсинга сообщений. Можно указать несколько через запятую
 void attach(void (*handler)(String&, String&)); // подключение обработчика сообщений
 void detach();                                  // отключение обработчика сообщений
 uint8_t tickManual();                           // ручная проверка обновлений
 uint8_t tick();                                 // проверка обновлений по таймеру
-uint8_t sendMessage(String msg);                // отправить сообщение в чат (String)
-uint8_t sendMessage(const char* msg);           // отправить сообщение в чат (char*)
-uint8_t showMenu(String str);                   // показать меню (String)
-uint8_t showMenu(const char* str);              // показать меню (char*)
-uint8_t closeMenu();                            // скрыть меню
-uint8_t inlineMenu(String msg, String str);             // показать инлайн меню (String)
-uint8_t inlineMenu(const char* msg, const char* str);   // показать инлайн меню (char*)
-uint8_t sendRequest(String& req);               // отправить запрос (String)
+
+uint8_t sendMessage(String msg);                // отправить сообщение в указанный в setChatID чат/чаты
+uint8_t sendMessage(String msg, String id);     // отправить сообщение в указанный здесь чат/чаты (через запятую)
+uint8_t showMenu(String str);                   // показать меню в указанном в setChatID чате
+uint8_t showMenu(String str, String id);        // показать меню в указанном здесь чате/чатах (через запятую)
+uint8_t closeMenu();                            // скрыть меню в указанном в setChatID чате
+uint8_t closeMenu(String id);                   // скрыть меню в указанном здесь чате/чатах (через запятую)
+uint8_t inlineMenu(String msg, String str);     // показать инлайн меню в указанном в setChatID чате
+uint8_t inlineMenu(String msg, String str, String id);  // показать инлайн меню в указанном здесь чате/чатах (через запятую)
+
+uint8_t sendRequest(String& req);               // отправить запрос
 void autoIncrement(boolean incr);               // авто инкремент сообщений (по умолч включен)
 void incrementID(uint8_t val);                  // вручную инкрементировать ID на val
+String chatIDs;                                 // указанная в setChatID строка, для отладки и редактирования списка
 
 // для отправки меню используется следующая конструкция:
 // \t - горизонтальное разделение кнопок, \n - вертикальное
@@ -80,6 +81,8 @@ void incrementID(uint8_t val);                  // вручную инкреме
 // 2 - Переполнен по ovf
 // 3 - Ошибка телеграм
 // 4 - Ошибка подключения
+// 5 - не задан chat ID
+// 6 - множественная отправка, статус неизвестен
 ```
 
 <a id="example"></a>
@@ -153,7 +156,7 @@ void loop() {
 ## Версии
 - v1.0
 - v1.1 - оптимизация
-- v1.2 - можно задать несколько chatID
+- v1.2 - можно задать несколько chatID и отправлять в указанный чат
 
 <a id="feedback"></a>
 ## Баги и обратная связь

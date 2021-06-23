@@ -19,7 +19,7 @@
     Версии:
     v1.0 - релиз
     v1.1 - оптимизация
-    v1.2 - можно задать несколько chatID
+    v1.2 - можно задать несколько chatID и отправлять в указанный чат
 */
 
 /*
@@ -29,6 +29,8 @@
     2 - Переполнен по ovf
     3 - Ошибка телеграм
     4 - Ошибка подключения
+    5 - не задан chat ID
+    6 - множественная отправка, статус неизвестен
 */
 
 #ifndef FastBot_h
@@ -40,6 +42,26 @@
 static std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
 static HTTPClient https;
 
+// вспомогательный класс
+class _StringParser {
+public:
+    void reset() {
+        from = to = -1;    
+    }
+    bool update(String& str) {
+        if (to == str.length()) return 0;
+        from = to + 1;
+        to = str.indexOf(',', from);
+        if (to < 0) to = str.length();
+        return 1;    
+    }
+    int from = 0;
+    int to = 0;
+private:
+};
+static _StringParser _pars;
+
+// ================================
 class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
@@ -53,14 +75,9 @@ public:
     
     // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
     void setChatID(String chatID) {
-        _chatID = chatID;
+        chatIDs = chatID;        
     }
-    
-    // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
-    void setChatID(const char* chatID) {
-        _chatID = chatID;
-    }
-    
+
     // подключение обработчика сообщений
     void attach(void (*handler)(String&, String&)) {
         _callback = handler;
@@ -90,63 +107,69 @@ public:
         }
         return 0;
     }
-
-    // отправить сообщение в чат
-    uint8_t sendMessage(const char* msg) {
-        String request = _request + "/sendMessage?chat_id=" + _chatID + "&text=" + msg;
-        return sendRequest(request);
-    }
-    uint8_t sendMessage(String& msg) {
-        return sendMessage(msg.c_str());
-    }
-
-    // показать меню
-    uint8_t showMenu(const char* str) {
-        String request = _request + "/sendMessage?chat_id=" + _chatID + "&text=Show Menu&reply_markup={\"keyboard\":[[\"";
-        for (int i = 0; i < strlen(str); i++) {
-            char c = str[i];
-            if (c == '\t') request += "\",\"";
-            else if (c == '\n') request += "\"],[\"";
-            else request += c;
-        }
-        request += "\"]],\"resize_keyboard\":true}";
-        return sendRequest(request);
-    }
-    uint8_t showMenu(String& str) {
-        return showMenu(str.c_str());
+    
+    // отправить сообщение в указанный в setChatID чат/чаты
+    uint8_t sendMessage(String msg) {
+        return sendMessage(msg, chatIDs);
     }
     
-    // скрыть меню
+    // отправить сообщение в указанный здесь чат/чаты
+    uint8_t sendMessage(String msg, String id) {
+        if (!id.length()) return 5;                             // не задан ID чата
+        if (id.indexOf(',') < 0) return _sendMessage(msg, id);  // один ID
+        else {                                                  // несколько ID
+            _pars.reset();
+            while(_pars.update(id)) _sendMessage(msg, id.substring(_pars.from, _pars.to));            
+        }
+        return 6;
+    }
+    
+    // показать меню в указанном в setChatID чате/чатах
+    uint8_t showMenu(String msg) {
+        return showMenu(msg, chatIDs);
+    }
+    
+    // показать меню в указанном здесь чате/чатах
+    uint8_t showMenu(String msg, String id) {
+        if (!id.length()) return 5;                             // не задан ID чата
+        if (id.indexOf(',') < 0) return _showMenu(msg, id);     // один ID
+        else {                                                  // несколько ID
+            _pars.reset();
+            while(_pars.update(id)) _showMenu(msg, id.substring(_pars.from, _pars.to));            
+        }
+        return 6;
+    }
+    
+    // закрыть меню в указанном в setChatID чате/чатах
     uint8_t closeMenu() {
-        String request = _request + "/sendMessage?chat_id=" + _chatID + "&text=Close Menu&reply_markup={\"remove_keyboard\":true}";
-        return sendRequest(request);
+        return closeMenu(chatIDs);
     }
     
-    // показать инлайн меню
-    uint8_t inlineMenu(const char* msg, const char* str) {
-        String request = _request + "/sendMessage?chat_id=" + _chatID + "&text=" + msg + "&reply_markup={\"inline_keyboard\":[[{";
-        String buf = "";
-        for (int i = 0; i < strlen(str); i++) {
-            char c = str[i];
-            if (c == '\t') {
-                addInlineButton(request, buf);
-                request += "},{";
-                buf = "";
-            }
-            else if (c == '\n') {
-                addInlineButton(request, buf);
-                request += "}],[{";
-                buf = "";
-            }
-            else buf += c;
+    // закрыть меню в указанном здесь чате/чатах
+    uint8_t closeMenu(String id) {
+        if (!id.length()) return 5;                             // не задан ID чата
+        if (id.indexOf(',') < 0) return _closeMenu(id);     // один ID
+        else {                                                  // несколько ID
+            _pars.reset();
+            while(_pars.update(id)) _closeMenu(id.substring(_pars.from, _pars.to));            
         }
-        addInlineButton(request, buf);
-        request += "}]]}";
-        return sendRequest(request);
+        return 6;
     }
-
-    uint8_t inlineMenu(String& msg, String& str) {
-        return inlineMenu(msg.c_str(), str.c_str());
+    
+    // показать инлайн меню в указанном в setChatID чате/чатах
+    uint8_t inlineMenu(String msg, String str) {
+        return inlineMenu(msg, str, chatIDs);
+    }
+    
+    // показать инлайн меню в указанном здесь чате/чатах
+    uint8_t inlineMenu(String msg, String str, String id) {
+        if (!id.length()) return 5;                             // не задан ID чата
+        if (id.indexOf(',') < 0) return _inlineMenu(msg, str, id);     // один ID
+        else {                                                  // несколько ID
+            _pars.reset();
+            while(_pars.update(id)) _inlineMenu(msg, str, id.substring(_pars.from, _pars.to));            
+        }
+        return 6;
     }
     
     // отправить запрос
@@ -168,11 +191,59 @@ public:
     void incrementID(uint8_t val) {
         if (_incr) ID += val;
     }
+    
+    // для непосредственного редактирования
+    String chatIDs = "";
 
 private:
+    uint8_t _sendMessage(String& msg, String id) {
+        String request = _request + "/sendMessage?chat_id=" + id + "&text=" + msg;
+        return sendRequest(request);
+    }
+    
+    uint8_t _showMenu(String& str, String id) {
+        String request = _request + "/sendMessage?chat_id=" + id + "&text=Show Menu&reply_markup={\"keyboard\":[[\"";
+        for (int i = 0; i < str.length(); i++) {
+            char c = str[i];
+            if (c == '\t') request += "\",\"";
+            else if (c == '\n') request += "\"],[\"";
+            else request += c;
+        }
+        request += "\"]],\"resize_keyboard\":true}";
+        return sendRequest(request);
+    }
+    
+    uint8_t _closeMenu(String id) {
+        String request = _request + "/sendMessage?chat_id=" + id + "&text=Close Menu&reply_markup={\"remove_keyboard\":true}";
+        return sendRequest(request);
+    }
+    
+    uint8_t _inlineMenu(String& msg, String& str, String id) {
+        String request = _request + "/sendMessage?chat_id=" + id + "&text=" + msg + "&reply_markup={\"inline_keyboard\":[[{";
+        String buf = "";
+        for (int i = 0; i < str.length(); i++) {
+            char c = str[i];
+            if (c == '\t') {
+                addInlineButton(request, buf);
+                request += "},{";
+                buf = "";
+            }
+            else if (c == '\n') {
+                addInlineButton(request, buf);
+                request += "}],[{";
+                buf = "";
+            }
+            else buf += c;
+        }
+        addInlineButton(request, buf);
+        request += "}]]}";
+        return sendRequest(request);
+    }
+    
     void addInlineButton(String& str, String& msg) {
         str += "\"text\":\"" + msg + "\",\"callback_data\":\"" + msg + '\"';
     }
+    
     uint8_t parse(const String& str) {
         if (!str.startsWith("{\"ok\":true")) {    // ошибка запроса (неправильный токен итд)
             https.end();
@@ -198,13 +269,13 @@ private:
                 if (IDpos == -1) IDpos = str.length();                // если конец пакета - для удобства считаем что позиция ID в конце
 
                 // установлена проверка на ID чата - проверяем соответствие
-                if (_chatID.length() > 0) {
+                if (chatIDs.length() > 0) {
                     textPos = str.indexOf("\"chat\":{\"id\":", textPos);
                     if (textPos < 0 || textPos > IDpos) continue;
                     endPos = str.indexOf(",\"", textPos);
                     String chatID = str.substring(textPos + 13, endPos);
                     textPos = endPos;
-                    if (_chatID.indexOf(chatID) < 0) continue;  // не тот чат
+                    if (chatIDs.indexOf(chatID) < 0) continue;  // не тот чат
                 }
 
                 // ищем имя юзера
@@ -241,8 +312,7 @@ private:
     String _request;
     int _ovf = 5000, _period = 1000, _limit = 10;
     long ID = 0;
-    uint32_t tmr = 0;
-    String _chatID = "";
-    boolean _incr = true;
+    uint32_t tmr = 0;    
+    bool _incr = true;
 };
 #endif

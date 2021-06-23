@@ -23,6 +23,7 @@ inlineMenu	KEYWORD2
 sendRequest	KEYWORD2
 autoIncrement	KEYWORD2
 incrementID	KEYWORD2
+chatIDs	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
