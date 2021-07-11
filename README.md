@@ -51,21 +51,35 @@ FastBot bot(токен, лимит, порог, период);
 <a id="usage"></a>
 ## Использование
 ```cpp
+// настройки
 void setChatID(String chatID);                  // установка ID чата для парсинга сообщений. Можно указать несколько через запятую
 void attach(void (*handler)(String&, String&)); // подключение обработчика сообщений
 void detach();                                  // отключение обработчика сообщений
+
+// тикер
 uint8_t tickManual();                           // ручная проверка обновлений
 uint8_t tick();                                 // проверка обновлений по таймеру
 
+// сообщения
 uint8_t sendMessage(String msg);                // отправить сообщение в указанный в setChatID чат/чаты
 uint8_t sendMessage(String msg, String id);     // отправить сообщение в указанный здесь чат/чаты (через запятую)
+
+// меню
 uint8_t showMenu(String str);                   // показать меню в указанном в setChatID чате
 uint8_t showMenu(String str, String id);        // показать меню в указанном здесь чате/чатах (через запятую)
 uint8_t closeMenu();                            // скрыть меню в указанном в setChatID чате
 uint8_t closeMenu(String id);                   // скрыть меню в указанном здесь чате/чатах (через запятую)
+
+uint8_t showMenuText(String msg, String str);               // показать меню str в указанном в setChatID чате + сообщение msg
+uint8_t showMenuText(String msg, String str, String id);    // показать меню str в указанном здесь чате/чатах (через запятую) + сообщение msg
+uint8_t closeMenuText(String msg);                          // скрыть меню в указанном в setChatID чате + сообщение msg
+uint8_t closeMenuText(String msg, String id);               // скрыть меню в указанном здесь чате/чатах (через запятую) + сообщение msg
+
+// инлайн меню
 uint8_t inlineMenu(String msg, String str);     // показать инлайн меню в указанном в setChatID чате
 uint8_t inlineMenu(String msg, String str, String id);  // показать инлайн меню в указанном здесь чате/чатах (через запятую)
 
+// сервис
 uint8_t sendRequest(String& req);               // отправить запрос
 void autoIncrement(boolean incr);               // авто инкремент сообщений (по умолч включен)
 void incrementID(uint8_t val);                  // вручную инкрементировать ID на val
@@ -157,6 +171,7 @@ void loop() {
 - v1.0
 - v1.1 - оптимизация
 - v1.2 - можно задать несколько chatID и отправлять в указанный чат
+- v1.3 - добавлена возможность задать текст при открытии и закрытии меню
 
 <a id="feedback"></a>
 ## Баги и обратная связь

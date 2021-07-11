@@ -18,7 +18,9 @@ tickManual	KEYWORD2
 tick	KEYWORD2
 sendMessage	KEYWORD2
 showMenu	KEYWORD2
+showMenuText	KEYWORD2
 closeMenu	KEYWORD2
+closeMenuText	KEYWORD2
 inlineMenu	KEYWORD2
 sendRequest	KEYWORD2
 autoIncrement	KEYWORD2

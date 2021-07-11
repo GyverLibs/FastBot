@@ -20,6 +20,7 @@
     v1.0 - релиз
     v1.1 - оптимизация
     v1.2 - можно задать несколько chatID и отправлять в указанный чат
+    v1.3 - добавлена возможность задать текст при открытии и закрытии меню
 */
 
 /*
@@ -125,17 +126,34 @@ public:
     }
     
     // показать меню в указанном в setChatID чате/чатах
-    uint8_t showMenu(String msg) {
-        return showMenu(msg, chatIDs);
+    uint8_t showMenu(String str) {
+        return showMenu(str, chatIDs);
     }
     
     // показать меню в указанном здесь чате/чатах
-    uint8_t showMenu(String msg, String id) {
-        if (!id.length()) return 5;                             // не задан ID чата
-        if (id.indexOf(',') < 0) return _showMenu(msg, id);     // один ID
-        else {                                                  // несколько ID
+    uint8_t showMenu(String str, String id) {
+        String msg = "Show Menu";
+        if (!id.length()) return 5;                                 // не задан ID чата
+        if (id.indexOf(',') < 0) return _showMenu(str, msg, id);    // один ID
+        else {                                                       // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _showMenu(msg, id.substring(_pars.from, _pars.to));            
+            while(_pars.update(id)) _showMenu(str, msg, id.substring(_pars.from, _pars.to));            
+        }
+        return 6;
+    }
+    
+    // показать меню в указанном в setChatID чате/чатах с указанным текстом
+    uint8_t showMenuText(String msg, String str) {
+        return showMenu(str, msg, chatIDs);
+    }
+    
+    // показать меню в указанном здесь чате/чатах с указанным текстом
+    uint8_t showMenu(String msg, String str, String id) {
+        if (!id.length()) return 5;                                 // не задан ID чата
+        if (id.indexOf(',') < 0) return _showMenu(str, msg, id);    // один ID
+        else {                                                      // несколько ID
+            _pars.reset();
+            while(_pars.update(id)) _showMenu(str, msg, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -147,11 +165,28 @@ public:
     
     // закрыть меню в указанном здесь чате/чатах
     uint8_t closeMenu(String id) {
+        String msg = "Close Menu";
         if (!id.length()) return 5;                             // не задан ID чата
-        if (id.indexOf(',') < 0) return _closeMenu(id);     // один ID
+        if (id.indexOf(',') < 0) return _closeMenu(msg, id);    // один ID
         else {                                                  // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _closeMenu(id.substring(_pars.from, _pars.to));            
+            while(_pars.update(id)) _closeMenu(msg, id.substring(_pars.from, _pars.to));            
+        }
+        return 6;
+    }
+    
+    // закрыть меню в указанном в setChatID чате/чатах с указанным текстом
+    uint8_t closeMenuText(String msg) {
+        return closeMenu(msg, chatIDs);
+    }
+    
+    // закрыть меню в указанном здесь чате/чатах с указанным текстом
+    uint8_t closeMenuText(String msg, String id) {
+        if (!id.length()) return 5;                             // не задан ID чата
+        if (id.indexOf(',') < 0) return _closeMenu(msg, id);    // один ID
+        else {                                                  // несколько ID
+            _pars.reset();
+            while(_pars.update(id)) _closeMenu(msg, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -201,8 +236,8 @@ private:
         return sendRequest(request);
     }
     
-    uint8_t _showMenu(String& str, String id) {
-        String request = _request + "/sendMessage?chat_id=" + id + "&text=Show Menu&reply_markup={\"keyboard\":[[\"";
+    uint8_t _showMenu(String& str, String& msg, String id) {
+        String request = _request + "/sendMessage?chat_id=" + id + "&text=" + msg + "&reply_markup={\"keyboard\":[[\"";
         for (int i = 0; i < str.length(); i++) {
             char c = str[i];
             if (c == '\t') request += "\",\"";
@@ -213,8 +248,8 @@ private:
         return sendRequest(request);
     }
     
-    uint8_t _closeMenu(String id) {
-        String request = _request + "/sendMessage?chat_id=" + id + "&text=Close Menu&reply_markup={\"remove_keyboard\":true}";
+    uint8_t _closeMenu(String& msg, String id) {
+        String request = _request + "/sendMessage?chat_id=" + id + "&text=" + msg + "&reply_markup={\"remove_keyboard\":true}";
         return sendRequest(request);
     }
     
