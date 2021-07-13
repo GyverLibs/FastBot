@@ -21,6 +21,7 @@
     v1.1 - оптимизация
     v1.2 - можно задать несколько chatID и отправлять в указанный чат
     v1.3 - добавлена возможность задать текст при открытии и закрытии меню
+    v1.3.1 - исправлены ошибки с 1.3
 */
 
 /*
@@ -144,11 +145,11 @@ public:
     
     // показать меню в указанном в setChatID чате/чатах с указанным текстом
     uint8_t showMenuText(String msg, String str) {
-        return showMenu(str, msg, chatIDs);
+        return showMenuText(str, msg, chatIDs);
     }
     
     // показать меню в указанном здесь чате/чатах с указанным текстом
-    uint8_t showMenu(String msg, String str, String id) {
+    uint8_t showMenuText(String msg, String str, String id) {
         if (!id.length()) return 5;                                 // не задан ID чата
         if (id.indexOf(',') < 0) return _showMenu(str, msg, id);    // один ID
         else {                                                      // несколько ID
@@ -177,7 +178,7 @@ public:
     
     // закрыть меню в указанном в setChatID чате/чатах с указанным текстом
     uint8_t closeMenuText(String msg) {
-        return closeMenu(msg, chatIDs);
+        return closeMenuText(msg, chatIDs);
     }
     
     // закрыть меню в указанном здесь чате/чатах с указанным текстом
