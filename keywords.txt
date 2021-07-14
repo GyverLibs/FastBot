@@ -12,11 +12,15 @@ FastBot	KEYWORD1
 #######################################
 
 setChatID	KEYWORD2
+setPeriod	KEYWORD2
+setOvf	KEYWORD2
+setLimit	KEYWORD2
 attach	KEYWORD2
 detach	KEYWORD2
 tickManual	KEYWORD2
 tick	KEYWORD2
 sendMessage	KEYWORD2
+deleteMessage	KEYWORD2
 showMenu	KEYWORD2
 showMenuText	KEYWORD2
 closeMenu	KEYWORD2

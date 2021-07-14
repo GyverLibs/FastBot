@@ -55,6 +55,9 @@ FastBot bot(токен, лимит, порог, период);
 void setChatID(String chatID);                  // установка ID чата для парсинга сообщений. Можно указать несколько через запятую
 void attach(void (*handler)(String&, String&)); // подключение обработчика сообщений
 void detach();                                  // отключение обработчика сообщений
+void setLimit(int limit);                       // макс кол-во сообщений на запрос
+void setOvf(int ovf);                           // макс символов
+void setPeriod(int period);                     // период опроса
 
 // тикер
 uint8_t tickManual();                           // ручная проверка обновлений
@@ -63,6 +66,8 @@ uint8_t tick();                                 // проверка обновл
 // сообщения
 uint8_t sendMessage(String msg);                // отправить сообщение в указанный в setChatID чат/чаты
 uint8_t sendMessage(String msg, String id);     // отправить сообщение в указанный здесь чат/чаты (через запятую)
+uint8_t deleteMessage(int offset);              // удалить сообщение со смещением offset в указанный в setChatID чат/чаты
+uint8_t deleteMessage(int offset, String id);   // удалить сообщение со смещением offset в указанном здесь ID чата/чатов
 
 // меню
 uint8_t showMenu(String str);                   // показать меню в указанном в setChatID чате
@@ -173,6 +178,7 @@ void loop() {
 - v1.2 - можно задать несколько chatID и отправлять в указанный чат
 - v1.3 - добавлена возможность задать текст при открытии и закрытии меню
 - v1.3.1 - исправлены ошибки с 1.3
+- v1.4 - добавлена возможность удалять сообщения
 
 <a id="feedback"></a>
 ## Баги и обратная связь

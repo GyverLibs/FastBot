@@ -22,6 +22,7 @@
     v1.2 - можно задать несколько chatID и отправлять в указанный чат
     v1.3 - добавлена возможность задать текст при открытии и закрытии меню
     v1.3.1 - исправлены ошибки с 1.3
+    v1.4 - добавлена возможность удалять сообщения
 */
 
 /*
@@ -75,6 +76,21 @@ public:
         client->setInsecure();
     }
     
+    // макс кол-во сообщений на запрос
+    void setLimit(int limit) {
+        _limit = limit;
+    }
+    
+    // макс символов
+    void setOvf(int ovf) {
+        _ovf = ovf;
+    }
+    
+    // период опроса
+    void setPeriod(int period) {
+        _period = period;
+    }
+    
     // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
     void setChatID(String chatID) {
         chatIDs = chatID;        
@@ -122,6 +138,22 @@ public:
         else {                                                  // несколько ID
             _pars.reset();
             while(_pars.update(id)) _sendMessage(msg, id.substring(_pars.from, _pars.to));            
+        }
+        return 6;
+    }
+    
+    // удалить сообщение со смещением offset в указанный в setChatID чат/чаты
+    uint8_t deleteMessage(int offset) {
+        return deleteMessage(offset, chatIDs);
+    }
+    
+    // удалить сообщение со смещением offset в указанном здесь ID чата/чатов
+    uint8_t deleteMessage(int offset, String id) {
+        if (!id.length()) return 5;                                 // не задан ID чата
+        if (id.indexOf(',') < 0) return _deleteMessage(offset, id); // один ID
+        else {                                                      // несколько ID
+            _pars.reset();
+            while(_pars.update(id)) _deleteMessage(offset, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -232,6 +264,11 @@ public:
     String chatIDs = "";
 
 private:
+    uint8_t _deleteMessage(int offset, String id) {
+        String request = _request + "/deleteMessage?chat_id=" + id + "&message_id=" + (lastMsg-offset);
+        return sendRequest(request);
+    }
+    
     uint8_t _sendMessage(String& msg, String id) {
         String request = _request + "/sendMessage?chat_id=" + id + "&text=" + msg;
         return sendRequest(request);
@@ -304,6 +341,12 @@ private:
                 IDpos = str.indexOf("{\"update_id\":", IDpos + 1);    // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
                 if (IDpos == -1) IDpos = str.length();                // если конец пакета - для удобства считаем что позиция ID в конце
 
+                // ищем ID сообщения 
+                textPos = str.indexOf("\"message_id\":", textPos);
+                if (textPos < 0 || textPos > IDpos) continue;
+                endPos = str.indexOf(",\"", textPos);
+                lastMsg = str.substring(textPos + 13, endPos).toInt();
+                
                 // установлена проверка на ID чата - проверяем соответствие
                 if (chatIDs.length() > 0) {
                     textPos = str.indexOf("\"chat\":{\"id\":", textPos);
@@ -325,7 +368,7 @@ private:
                 int dataPos = str.indexOf("\"data\":", textPos);  // вдруг это callback_data
                 if (dataPos > 0 && dataPos < IDpos) {
                     endPos = str.indexOf("\"}}", textPos);
-                    msg = str.substring(dataPos + 8, endPos);       // забираем callback_data
+                    msg = str.substring(dataPos + 8, endPos);     // забираем callback_data
                 } else {
                     textPos = str.indexOf(",\"text\":\"", textPos);
                     if (textPos < 0 || textPos > IDpos) continue;
@@ -337,7 +380,6 @@ private:
                     msg = str.substring(textPos + 9, endPos);       // забираем обычное сообщение
                 }
                 if (*_callback) _callback(name, msg);
-
             } else break;   // IDpos > 0
         }
         if (_incr) ID += counter;
@@ -350,5 +392,6 @@ private:
     long ID = 0;
     uint32_t tmr = 0;    
     bool _incr = true;
+    uint32_t lastMsg = 0;
 };
 #endif
