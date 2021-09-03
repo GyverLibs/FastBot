@@ -71,7 +71,7 @@ static FB_StringParser _pars;
 struct FB_msg {
     String& name;
     String& text;
-    String& chat_id;
+    String& chatID;
 };
 
 // ================================
@@ -410,7 +410,7 @@ private:
 
     void (*_callback)(String& name, String& text) = nullptr;
     void (*_callback2)(FB_msg& msg) = nullptr;
-    String _token;    
+    String _token = "";    
     int _ovf = 5000, _period = 1000, _limit = 10;
     long ID = 0;
     uint32_t tmr = 0;    

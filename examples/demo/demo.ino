@@ -33,7 +33,7 @@ void setup() {
   //bot.setChatID("123456,7891011,12131415"); 
 
   // подключаем функцию-обработчик
-  bot.attach(parseHandler);
+  bot.attach(newMsg);
 
   // отправить сообщение в указанный в setChatID
   bot.sendMessage("Hello, World!");
@@ -60,12 +60,15 @@ void setup() {
   //bot.inlineMenu("Choose wisely", "Answer 1 \t Answer 2 \t Answer 3 \n Answer 4", "123456,7891011,12131415");
 }
 
-// создать свою функцию вида имя(String& ник, String& сообщение)
-void parseHandler(String& name, String& msg) {
-  // msg - сообщение в чате от name юзера
-  Serial.print(name);
+// обработчик сообщений
+// создать свою функцию вида имя(FB_msg& сообщение)
+void newMsg(FB_msg& msg) {
+  // выводим ID чата, имя юзера и текст сообщения
+  Serial.print(msg.chatID);
   Serial.print(", ");
-  Serial.println(msg);
+  Serial.print(msg.name);
+  Serial.print(", ");
+  Serial.println(msg.text);  
 }
 
 // можно вручную дёргать по одному сообщению при помощи tickManual

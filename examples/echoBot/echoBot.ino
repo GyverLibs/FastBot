@@ -19,14 +19,14 @@ void setup() {
 // обработчик сообщений
 void newMsg(FB_msg& msg) {
   // выводим ID чата, имя юзера и текст сообщения
-  Serial.print(msg.chat_id);
+  Serial.print(msg.chatID);
   Serial.print(", ");
   Serial.print(msg.name);
   Serial.print(", ");
   Serial.println(msg.text);    
     
   // отправить сообщение обратно
-  bot.sendMessage(msg.text, msg.chat_id);  
+  bot.sendMessage(msg.text, msg.chatID);  
 }
 
 void loop() {
