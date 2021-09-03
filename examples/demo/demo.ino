@@ -1,3 +1,5 @@
+// общее демо библиотеки. Обязательно смотри остальные примеры и документацию на гитхаб!
+
 // узнать токен бота можно у BotFather
 // узнать chat id можно по запросу https://api.telegram.org/bot<token>/getUpdates
 // искать "chat":{"id": тут id
@@ -18,17 +20,10 @@ FastBot bot(BOT_TOKEN);
 // период - период автоматического опроса бота в мс (по умолч. 1000)
 
 void setup() {
-  delay(2000);
-  Serial.begin(115200);
-  Serial.println();
-
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    if (millis() > 15000) ESP.restart();
-  }
-  Serial.println("Connected");
+  connectWiFi();
+  
+  // можно сменить токен
+  //bot.setToken(BOT_TOKEN);
 
   // установить ID чата, чтобы принимать сообщения только из него
   // узнать ID можно из ручного запроса в браузере
@@ -79,6 +74,21 @@ void loop() {
   // тикаем в луп
   bot.tick();
 }
+
+void connectWiFi() {
+  delay(2000);
+  Serial.begin(115200);
+  Serial.println();
+
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+    if (millis() > 15000) ESP.restart();
+  }
+  Serial.println("Connected");
+}
+
 
 /*
 Статусы tick:

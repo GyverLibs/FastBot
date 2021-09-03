@@ -17,18 +17,8 @@ String menu4 = "Answer 3.1 \t Answer 3.2 \t Answer 3.3 \n Back";
 byte depth = 0;
 
 void setup() {
-  delay(2000);
-  Serial.begin(115200);
-  Serial.println();
-
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    if (millis() > 15000) ESP.restart();
-  }
-  Serial.println("Connected");
-
+  connectWiFi();
+  
   bot.setPeriod(200);
   bot.setChatID(CHAT_ID);   // передай "" (пустую строку) чтобы отключить проверку
   bot.attach(parseHandler); // подключаем функцию-обработчик
@@ -63,4 +53,18 @@ void parseHandler(String& name, String& msg) {
 
 void loop() {
   bot.tick();
+}
+
+void connectWiFi() {
+  delay(2000);
+  Serial.begin(115200);
+  Serial.println();
+
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+    if (millis() > 15000) ESP.restart();
+  }
+  Serial.println("Connected");
 }
