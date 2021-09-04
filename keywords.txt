@@ -31,9 +31,11 @@ autoIncrement	KEYWORD2
 incrementID	KEYWORD2
 chatIDs	KEYWORD2
 setToken	KEYWORD2
+
 chatID	KEYWORD2
 name	KEYWORD2
 text	KEYWORD2
+ID	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

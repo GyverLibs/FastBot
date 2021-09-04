@@ -24,6 +24,7 @@
     v1.3.1 - исправлены ошибки с 1.3
     v1.4 - добавлена возможность удалять сообщения
     v1.5 - оптимизация, возможность смены токена, новый парсинг сообщений (id, имя, текст)
+    v1.5.1 - получаем также ID сообщения
 */
 
 /*
@@ -72,6 +73,7 @@ struct FB_msg {
     String& name;
     String& text;
     String& chatID;
+    String& ID;
 };
 
 // ================================
@@ -364,7 +366,8 @@ private:
                 textPos = str.indexOf("\"message_id\":", textPos);
                 if (textPos < 0 || textPos > IDpos) continue;
                 endPos = str.indexOf(",\"", textPos);
-                lastMsg = str.substring(textPos + 13, endPos).toInt();
+                String msgID = str.substring(textPos + 13, endPos);
+                lastMsg = msgID.toInt();
                 
                 // ищем ID чата
                 textPos = str.indexOf("\"chat\":{\"id\":", textPos);
@@ -400,7 +403,7 @@ private:
                 }
                 if (*_callback) _callback(name, text);
 
-                FB_msg message = (FB_msg){name, text, chatID};
+                FB_msg message = (FB_msg){name, text, chatID, msgID};
                 if (*_callback2) _callback2(message);
             } else break;   // IDpos > 0
         }
