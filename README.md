@@ -213,7 +213,7 @@ void setup() {
 // создать свою функцию вида имя(FB_msg& сообщение)
 void newMsg(FB_msg& msg) {
   // выводим ID чата, имя юзера и текст сообщения
-  Serial.print(msg.chat_id);
+  Serial.print(msg.chatID);
   Serial.print(", ");
   Serial.print(msg.name);
   Serial.print(", ");
