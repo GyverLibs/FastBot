@@ -25,6 +25,7 @@
     v1.4 - добавлена возможность удалять сообщения
     v1.5 - оптимизация, возможность смены токена, новый парсинг сообщений (id, имя, текст)
     v1.5.1 - получаем также ID сообщения
+    v1.6 - добавлен режим FB_DYNAMIC_HTTP, чтение имени пользователя
 */
 
 /*
@@ -44,10 +45,12 @@
 #include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
-static std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
 static HTTPClient https;
 static const char _FB_host[] = "https://api.telegram.org/bot";
 static const char _FB_sendM[] = "/sendMessage?chat_id=";
+#ifndef FB_DYNAMIC_HTTP
+static std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
+#endif
 
 // вспомогательный класс
 class FB_StringParser {
@@ -70,7 +73,9 @@ static FB_StringParser _pars;
 
 
 struct FB_msg {
-    String& name;
+    String& name;   // compability
+    String& username;
+    String& first_name;
     String& text;
     String& chatID;
     String& ID;
@@ -85,7 +90,9 @@ public:
         _ovf = ovf;
         _limit = limit;
         _period = period;
+        #ifndef FB_DYNAMIC_HTTP
         client->setInsecure();
+        #endif
     }
     
     // макс кол-во сообщений на запрос
@@ -130,11 +137,20 @@ public:
     // ручная проверка обновлений
     uint8_t tickManual() {
         uint8_t status = 1;
+        #ifdef FB_DYNAMIC_HTTP
+        clientExist = true;
+        client = new BearSSL::WiFiClientSecure();
+        client->setInsecure();
+        #endif
         if (https.begin(*client, (String)_FB_host + _token + "/getUpdates?limit=" + _limit + "&offset=" + ID)) {
             if (https.GET() == HTTP_CODE_OK) status = parse(https.getString());
             else status = 3;
             https.end();
         } else status = 4;
+        #ifdef FB_DYNAMIC_HTTP
+        delete client;
+        clientExist = false;
+        #endif
         return status;
     }
     
@@ -264,10 +280,19 @@ public:
     // отправить запрос
     uint8_t sendRequest(String& req) {
         uint8_t status = 1;
+        #ifdef FB_DYNAMIC_HTTP
+        if (!clientExist) {
+            client = new BearSSL::WiFiClientSecure();
+            client->setInsecure();
+        }
+        #endif
         if (https.begin(*client, req)) {
             if (https.GET() != HTTP_CODE_OK) status = 3;
             https.end();
         } else status = 4;
+        #ifdef FB_DYNAMIC_HTTP
+        if (!clientExist) delete client;
+        #endif
         return status;
     }
     
@@ -285,6 +310,11 @@ public:
     String chatIDs = "";
     
 private:
+    #ifdef FB_DYNAMIC_HTTP
+    BearSSL::WiFiClientSecure *client;
+    bool clientExist = false;
+    #endif
+    
     uint8_t _deleteMessage(int offset, String id) {
         String request = (String)_FB_host + _token + "/deleteMessage?chat_id=" + id + "&message_id=" + (lastMsg-offset);
         return sendRequest(request);
@@ -380,10 +410,19 @@ private:
                 if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;
                 
                 // ищем имя юзера
-                textPos = str.indexOf("\"username\":\"", textPos);
-                if (textPos < 0 || textPos > IDpos) continue;
-                endPos = str.indexOf("\",\"", textPos);
-                String name = str.substring(textPos + 12, endPos);
+                String username = "";
+                int namePos = str.indexOf("\"username\":\"", textPos);
+                if (namePos > 0 || namePos < IDpos) {
+                    endPos = str.indexOf("\",\"", namePos);
+                    username = str.substring(namePos + 12, endPos);
+                }
+                String first_name = "";
+                namePos = str.indexOf("\"first_name\":\"", textPos);
+                if (namePos > 0 || namePos < IDpos) {
+                    endPos = str.indexOf("\",\"", namePos);
+                    first_name = str.substring(namePos + 14, endPos);
+                }
+                textPos = endPos;
 
                 // ищем сообщение
                 String text;
@@ -401,9 +440,9 @@ private:
                     if (str[textPos + 9] == '/') textPos++;
                     text = str.substring(textPos + 9, endPos);       // забираем обычное сообщение
                 }
-                if (*_callback) _callback(name, text);
+                if (*_callback) _callback(username, text);
 
-                FB_msg message = (FB_msg){name, text, chatID, msgID};
+                FB_msg message = (FB_msg){username, username, first_name, text, chatID, msgID};
                 if (*_callback2) _callback2(message);
             } else break;   // IDpos > 0
         }

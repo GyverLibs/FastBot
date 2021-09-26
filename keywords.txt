@@ -34,9 +34,12 @@ setToken	KEYWORD2
 
 chatID	KEYWORD2
 name	KEYWORD2
+username	KEYWORD2
+first_name	KEYWORD2
 text	KEYWORD2
 ID	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
 #######################################
+FB_DYNAMIC_HTTP	LITERAL1
