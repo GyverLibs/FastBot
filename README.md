@@ -131,10 +131,11 @@ String chatIDs;                                 // указанная в setChat
 - Вызываем `attach(функция)`
 - Эта функция будет автоматически вызвана при входящем сообщении, если ID чата совпадают или не настроены
 - Внутри этой функции можно пользоваться переданной переменной `сообщение`, которая имеет тип `FB_msg` (структура) и содержит в себе:
-    - `chatID` - id чата (String)
-    - `name` - имя пользователя (String)
-    - `text` - текст сообщения (String)
-    - `ID` - ID сообщения (String)
+    - `chatID` - id чата
+    - `username` - логин пользователя
+    - `first_name` - имя пользователя
+    - `text` - текст сообщения
+    - `ID` - ID сообщения
 
 Минимальный пример:
 ```cpp
@@ -151,7 +152,7 @@ void newMsg(FB_msg& msg) {
   // выводим ID чата, имя юзера и текст сообщения
   Serial.print(msg.chatID);
   Serial.print(", ");
-  Serial.print(msg.name);
+  Serial.print(msg.username);
   Serial.print(", ");
   Serial.println(msg.text);
 }
@@ -165,8 +166,6 @@ void loop() {
 ## Пример
 ```cpp
 // узнать токен бота можно у BotFather
-// узнать chat id можно по запросу https://api.telegram.org/bot<token>/getUpdates
-// искать "chat":{"id": тут id
 
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
@@ -202,6 +201,8 @@ void setup() {
 
   // отправить сообщение (работает, если указан CHAT_ID)
   bot.sendMessage("Hello, World!");
+  
+  //bot.sendMessage("Hello, World!", "123456789");  // отправить в чат с указанным ID
 
   // показать юзер меню (\t - горизонтальное разделение кнопок, \n - вертикальное
   bot.showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4");
@@ -220,7 +221,7 @@ void newMsg(FB_msg& msg) {
   // выводим ID чата, имя юзера и текст сообщения
   Serial.print(msg.chatID);
   Serial.print(", ");
-  Serial.print(msg.name);
+  Serial.print(msg.username);
   Serial.print(", ");
   Serial.println(msg.text);  
 }
