@@ -26,6 +26,7 @@
     v1.5 - оптимизация, возможность смены токена, новый парсинг сообщений (id, имя, текст)
     v1.5.1 - получаем также ID сообщения
     v1.6 - добавлен режим FB_DYNAMIC_HTTP, чтение имени пользователя
+    v1.6.1 - сокращён размер буфера для https в режиме FB_DYNAMIC_HTTP для экономии ОЗУ
 */
 
 /*
@@ -140,6 +141,7 @@ public:
         #ifdef FB_DYNAMIC_HTTP
         clientExist = true;
         client = new BearSSL::WiFiClientSecure();
+        client->setBufferSizes(512, 512);
         client->setInsecure();
         #endif
         if (https.begin(*client, (String)_FB_host + _token + "/getUpdates?limit=" + _limit + "&offset=" + ID)) {
@@ -283,6 +285,7 @@ public:
         #ifdef FB_DYNAMIC_HTTP
         if (!clientExist) {
             client = new BearSSL::WiFiClientSecure();
+            client->setBufferSizes(512, 512);
             client->setInsecure();
         }
         #endif
