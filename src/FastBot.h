@@ -26,6 +26,13 @@
     v1.5 - оптимизация, возможность смены токена, новый парсинг сообщений (id, имя, текст)
     v1.5.1 - получаем также ID сообщения
     v1.6 - добавлен режим FB_DYNAMIC_HTTP, чтение имени пользователя
+    v1.7:
+        - Убрал динамический режим, работает слишком медленно
+        - Исправил warningи
+        - Починил работу бота в "группах" (отрицательный ID чата)
+        - Оптимизация памяти
+        - Ускорил работу
+        - Пофиксил работу через раз в сценарии "эхо"
 */
 
 /*
@@ -41,16 +48,13 @@
 
 #ifndef _FastBot_h
 #define _FastBot_h
+
 #include <Arduino.h>
 #include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
-static HTTPClient https;
-static const char _FB_host[] = "https://api.telegram.org/bot";
-static const char _FB_sendM[] = "/sendMessage?chat_id=";
-#ifndef FB_DYNAMIC_HTTP
-static std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
-#endif
+static BearSSL::WiFiClientSecure _FB_client;
+static HTTPClient _FB_httpGet, _FB_httpReq;
 
 // вспомогательный класс
 class FB_StringParser {
@@ -59,7 +63,7 @@ public:
         from = to = -1;    
     }
     bool update(String& str) {
-        if (to == str.length()) return 0;
+        if (to == (int)str.length()) return 0;
         from = to + 1;
         to = str.indexOf(',', from);
         if (to < 0) to = str.length();
@@ -73,7 +77,7 @@ static FB_StringParser _pars;
 
 
 struct FB_msg {
-    String& name;   // compability
+    String& name;   // для совместимости
     String& username;
     String& first_name;
     String& text;
@@ -85,14 +89,18 @@ struct FB_msg {
 class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
-    FastBot(String token = "", int limit = 10, int ovf = 10000, int period = 1000) {
+    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 3200) {
         _token = token;
         _ovf = ovf;
         _limit = limit;
-        _period = period;
-        #ifndef FB_DYNAMIC_HTTP
-        client->setInsecure();
-        #endif
+        prd = period;
+        _FB_client.setBufferSizes(512, 512);
+        _FB_client.setInsecure();
+    }
+    
+    // установить размеры буфера на приём и отправку
+    void setBufferSizes(uint16_t rx, uint16_t tx) {
+        _FB_client.setBufferSizes(rx, tx);
     }
     
     // макс кол-во сообщений на запрос
@@ -107,7 +115,7 @@ public:
     
     // период опроса
     void setPeriod(int period) {
-        _period = period;
+        prd = period;
     }
     
     // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
@@ -133,30 +141,28 @@ public:
         _callback = nullptr;
         _callback2 = nullptr;
     }
-    
+
     // ручная проверка обновлений
     uint8_t tickManual() {
         uint8_t status = 1;
-        #ifdef FB_DYNAMIC_HTTP
-        clientExist = true;
-        client = new BearSSL::WiFiClientSecure();
-        client->setInsecure();
-        #endif
-        if (https.begin(*client, (String)_FB_host + _token + "/getUpdates?limit=" + _limit + "&offset=" + ID)) {
-            if (https.GET() == HTTP_CODE_OK) status = parse(https.getString());
+        String req;
+        req += F("https://api.telegram.org/bot");
+        req += _token;
+        req += F("/getUpdates?limit=");
+        req += _limit;
+        req += F("&offset=");
+        req += ID;
+        if (_FB_httpGet.begin(_FB_client, req)) {
+            if (_FB_httpGet.GET() == HTTP_CODE_OK) status = parse(_FB_httpGet.getString(), _FB_httpGet.getSize());
             else status = 3;
-            https.end();
+            _FB_httpGet.end();
         } else status = 4;
-        #ifdef FB_DYNAMIC_HTTP
-        delete client;
-        clientExist = false;
-        #endif
         return status;
     }
     
     // проверка обновлений по таймеру
     uint8_t tick() {
-        if (millis() - tmr >= _period) {
+        if (millis() - tmr >= prd) {
             tmr = millis();
             return tickManual();
         }
@@ -174,7 +180,7 @@ public:
         if (id.indexOf(',') < 0) return _FB_sendMessage(msg, id);   // один ID
         else {                                                      // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _FB_sendMessage(msg, id.substring(_pars.from, _pars.to));            
+            while (_pars.update(id)) _FB_sendMessage(msg, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -190,7 +196,7 @@ public:
         if (id.indexOf(',') < 0) return _deleteMessage(offset, id); // один ID
         else {                                                      // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _deleteMessage(offset, id.substring(_pars.from, _pars.to));            
+            while (_pars.update(id)) _deleteMessage(offset, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -202,12 +208,12 @@ public:
     
     // показать меню в указанном здесь чате/чатах
     uint8_t showMenu(String str, String id) {
-        String msg = "Show Menu";
+        String msg = F("Show Menu");
         if (!id.length()) return 5;                                 // не задан ID чата
         if (id.indexOf(',') < 0) return _showMenu(str, msg, id);    // один ID
         else {                                                       // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _showMenu(str, msg, id.substring(_pars.from, _pars.to));            
+            while (_pars.update(id)) _showMenu(str, msg, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -223,7 +229,7 @@ public:
         if (id.indexOf(',') < 0) return _showMenu(str, msg, id);    // один ID
         else {                                                      // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _showMenu(str, msg, id.substring(_pars.from, _pars.to));            
+            while (_pars.update(id)) _showMenu(str, msg, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -235,12 +241,12 @@ public:
     
     // закрыть меню в указанном здесь чате/чатах
     uint8_t closeMenu(String id) {
-        String msg = "Close Menu";
+        String msg = F("Close Menu");
         if (!id.length()) return 5;                             // не задан ID чата
         if (id.indexOf(',') < 0) return _closeMenu(msg, id);    // один ID
         else {                                                  // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _closeMenu(msg, id.substring(_pars.from, _pars.to));            
+            while (_pars.update(id)) _closeMenu(msg, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -256,7 +262,7 @@ public:
         if (id.indexOf(',') < 0) return _closeMenu(msg, id);    // один ID
         else {                                                  // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _closeMenu(msg, id.substring(_pars.from, _pars.to));            
+            while (_pars.update(id)) _closeMenu(msg, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
@@ -272,27 +278,18 @@ public:
         if (id.indexOf(',') < 0) return _inlineMenu(msg, str, id);     // один ID
         else {                                                  // несколько ID
             _pars.reset();
-            while(_pars.update(id)) _inlineMenu(msg, str, id.substring(_pars.from, _pars.to));            
+            while (_pars.update(id)) _inlineMenu(msg, str, id.substring(_pars.from, _pars.to));            
         }
         return 6;
     }
-    
+
     // отправить запрос
     uint8_t sendRequest(String& req) {
         uint8_t status = 1;
-        #ifdef FB_DYNAMIC_HTTP
-        if (!clientExist) {
-            client = new BearSSL::WiFiClientSecure();
-            client->setInsecure();
-        }
-        #endif
-        if (https.begin(*client, req)) {
-            if (https.GET() != HTTP_CODE_OK) status = 3;
-            https.end();
+        if (_FB_httpReq.begin(_FB_client, req)) {
+            if (_FB_httpReq.GET() != HTTP_CODE_OK) status = 3;
+            _FB_httpReq.end();
         } else status = 4;
-        #ifdef FB_DYNAMIC_HTTP
-        if (!clientExist) delete client;
-        #endif
         return status;
     }
     
@@ -310,131 +307,160 @@ public:
     String chatIDs = "";
     
 private:
-    #ifdef FB_DYNAMIC_HTTP
-    BearSSL::WiFiClientSecure *client;
-    bool clientExist = false;
-    #endif
-    
     uint8_t _deleteMessage(int offset, String id) {
-        String request = (String)_FB_host + _token + "/deleteMessage?chat_id=" + id + "&message_id=" + (lastMsg-offset);
-        return sendRequest(request);
+        String req;
+        req += F("https://api.telegram.org/bot");
+        req += _token;
+        req += F("/deleteMessage?chat_id=");
+        req += id;
+        req += F("&message_id=");
+        req += lastMsg - offset;
+        return sendRequest(req);
     }
     
     uint8_t _FB_sendMessage(String& msg, String id) {
-        String request = (String)_FB_host + _token + _FB_sendM + id + "&text=" + msg;
-        return sendRequest(request);
+        String req;
+        req += F("https://api.telegram.org/bot");
+        req += _token;
+        req += F("/sendMessage?chat_id=");
+        req += id;
+        req += F("&text=");
+        req += msg;
+        return sendRequest(req);
     }
     
     uint8_t _showMenu(String& str, String& msg, String id) {
-        String request = (String)_FB_host + _token + _FB_sendM + id + "&text=" + msg + "&reply_markup={\"keyboard\":[[\"";
-        for (int i = 0; i < str.length(); i++) {
+        String req;
+        req += F("https://api.telegram.org/bot");
+        req += _token;
+        req += F("/sendMessage?chat_id=");
+        req += id;
+        req += F("&text=");
+        req += msg;
+        req += F("&reply_markup={\"keyboard\":[[\"");
+        for (uint16_t i = 0; i < str.length(); i++) {
             char c = str[i];
-            if (c == '\t') request += "\",\"";
-            else if (c == '\n') request += "\"],[\"";
-            else request += c;
+            if (c == '\t') req += F("\",\"");
+            else if (c == '\n') req += F("\"],[\"");
+            else req += c;
         }
-        request += "\"]],\"resize_keyboard\":true}";
-        return sendRequest(request);
+        req += F("\"]],\"resize_keyboard\":true}");
+        return sendRequest(req);
     }
     
     uint8_t _closeMenu(String& msg, String id) {
-        String request = (String)_FB_host + _token + _FB_sendM + id + "&text=" + msg + "&reply_markup={\"remove_keyboard\":true}";
-        return sendRequest(request);
+        String req;
+        req += F("https://api.telegram.org/bot");
+        req += _token;
+        req += F("/sendMessage?chat_id=");
+        req += id;
+        req += F("&text=");
+        req += msg;
+        req += F("&reply_markup={\"remove_keyboard\":true}");
+        return sendRequest(req);
     }
     
     uint8_t _inlineMenu(String& msg, String& str, String id) {
-        String request = (String)_FB_host + _token + _FB_sendM + id + "&text=" + msg + "&reply_markup={\"inline_keyboard\":[[{";
+        String req;
+        req += F("https://api.telegram.org/bot");
+        req += _token;
+        req += F("/sendMessage?chat_id=");
+        req += id;
+        req += F("&text=");
+        req += msg;
+        req += F("&reply_markup={\"inline_keyboard\":[[{");
+        
         String buf = "";
-        for (int i = 0; i < str.length(); i++) {
+        for (uint16_t i = 0; i < str.length(); i++) {
             char c = str[i];
             if (c == '\t') {
-                addInlineButton(request, buf);
-                request += "},{";
+                addInlineButton(req, buf);
+                req += F("},{");
                 buf = "";
             }
             else if (c == '\n') {
-                addInlineButton(request, buf);
-                request += "}],[{";
+                addInlineButton(req, buf);
+                req += F("}],[{");
                 buf = "";
             }
             else buf += c;
         }
-        addInlineButton(request, buf);
-        request += "}]]}";
-        return sendRequest(request);
+        addInlineButton(req, buf);
+        req += F("}]]}");
+        return sendRequest(req);
     }
     
     void addInlineButton(String& str, String& msg) {
-        str += "\"text\":\"" + msg + "\",\"callback_data\":\"" + msg + '\"';
+        str += F("\"text\":\"");
+        str += msg;
+        str += F("\",\"callback_data\":\"");
+        str += msg;
+        str += '\"';
     }
     
-    uint8_t parse(const String& str) {
-        if (!str.startsWith("{\"ok\":true")) {    // ошибка запроса (неправильный токен итд)
-            https.end();
-            return 3;
-        }
-        if (https.getSize() > _ovf) {             // переполнен
-            int IDpos = str.indexOf("{\"update_id\":", IDpos);
+    uint8_t parse(const String& str, uint16_t size) {
+        if (!str.startsWith(F("{\"ok\":true"))) return 3;  // ошибка запроса (неправильный токен итд)
+        if (size > _ovf) {                              // переполнен
+            int IDpos = str.indexOf(F("{\"update_id\":"), 0);
             if (IDpos > 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt();
             ID++;
-            https.end();
             return 2;
         }
 
-        int IDpos = str.indexOf("{\"update_id\":", 0);  // первая позиция ключа update_id
+        int IDpos = str.indexOf(F("{\"update_id\":"), 0);  // первая позиция ключа update_id
         int counter = 0;
         while (true) {
-            if (IDpos > 0 && IDpos < str.length()) {      // если есть что разбирать
+            if (IDpos > 0 && IDpos < (int)str.length()) {      // если есть что разбирать
                 if (ID == 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt() + 1;   // холодный запуск, ищем ID
                 else counter++;                                                                     // иначе считаем пакеты
                 int textPos = IDpos;                                  // стартовая позиция для поиска
                 int endPos;
-                IDpos = str.indexOf("{\"update_id\":", IDpos + 1);    // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
+                IDpos = str.indexOf(F("{\"update_id\":"), IDpos + 1);    // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
                 if (IDpos == -1) IDpos = str.length();                // если конец пакета - для удобства считаем что позиция ID в конце
 
                 // ищем ID сообщения 
-                textPos = str.indexOf("\"message_id\":", textPos);
+                textPos = str.indexOf(F("\"message_id\":"), textPos);
                 if (textPos < 0 || textPos > IDpos) continue;
-                endPos = str.indexOf(",\"", textPos);
+                endPos = str.indexOf(F(",\""), textPos);
                 String msgID = str.substring(textPos + 13, endPos);
                 lastMsg = msgID.toInt();
                 
+                // ищем имя юзера
+                String username = "";
+                int namePos = str.indexOf(F("\"username\":\""), textPos);
+                if (namePos > 0 || namePos < IDpos) {
+                    endPos = str.indexOf(F("\",\""), namePos);
+                    username = str.substring(namePos + 12, endPos);
+                }
+                String first_name = "";
+                namePos = str.indexOf(F("\"first_name\":\""), textPos);
+                if (namePos > 0 || namePos < IDpos) {
+                    endPos = str.indexOf(F("\",\""), namePos);
+                    first_name = str.substring(namePos + 14, endPos);
+                }
+                textPos = endPos;
+                
                 // ищем ID чата
-                textPos = str.indexOf("\"chat\":{\"id\":", textPos);
+                textPos = str.indexOf(F("\"chat\":{\"id\":"), textPos);
                 if (textPos < 0 || textPos > IDpos) continue;
-                endPos = str.indexOf(",\"", textPos);
+                endPos = str.indexOf(F(",\""), textPos);
                 String chatID = str.substring(textPos + 13, endPos);
                 textPos = endPos;
                 
                 // установлена проверка на ID чата - проверяем соответствие, если что - выходим
                 if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;
-                
-                // ищем имя юзера
-                String username = "";
-                int namePos = str.indexOf("\"username\":\"", textPos);
-                if (namePos > 0 || namePos < IDpos) {
-                    endPos = str.indexOf("\",\"", namePos);
-                    username = str.substring(namePos + 12, endPos);
-                }
-                String first_name = "";
-                namePos = str.indexOf("\"first_name\":\"", textPos);
-                if (namePos > 0 || namePos < IDpos) {
-                    endPos = str.indexOf("\",\"", namePos);
-                    first_name = str.substring(namePos + 14, endPos);
-                }
-                textPos = endPos;
 
                 // ищем сообщение
                 String text;
-                int dataPos = str.indexOf("\"data\":", textPos);  // вдруг это callback_data
+                int dataPos = str.indexOf(F("\"data\":"), textPos);  // вдруг это callback_data
                 if (dataPos > 0 && dataPos < IDpos) {
-                    endPos = str.indexOf("\"}}", textPos);
+                    endPos = str.indexOf(F("\"}}"), textPos);
                     text = str.substring(dataPos + 8, endPos);     // забираем callback_data
                 } else {
-                    textPos = str.indexOf(",\"text\":\"", textPos);
+                    textPos = str.indexOf(F(",\"text\":\""), textPos);
                     if (textPos < 0 || textPos > IDpos) continue;
-                    endPos = str.indexOf("\"}}", textPos);
-                    int endPos2 = str.indexOf("\",\"entities", textPos);
+                    endPos = str.indexOf(F("\"}}"), textPos);
+                    int endPos2 = str.indexOf(F("\",\"entities"), textPos);
                     if (endPos > 0 && endPos2 > 0) endPos = min(endPos, endPos2);
                     else if (endPos < 0) endPos = endPos2;
                     if (str[textPos + 9] == '/') textPos++;
@@ -453,7 +479,7 @@ private:
     void (*_callback)(String& name, String& text) = nullptr;
     void (*_callback2)(FB_msg& msg) = nullptr;
     String _token = "";    
-    int _ovf = 5000, _period = 1000, _limit = 10;
+    uint16_t _ovf = 5000, prd = 3200, _limit = 10;
     long ID = 0;
     uint32_t tmr = 0;    
     bool _incr = true;
