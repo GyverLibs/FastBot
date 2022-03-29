@@ -21,26 +21,36 @@ tickManual	KEYWORD2
 tick	KEYWORD2
 sendMessage	KEYWORD2
 deleteMessage	KEYWORD2
+editMessageID	KEYWORD2
+editMessage	KEYWORD2
+editMenuID	KEYWORD2
 showMenu	KEYWORD2
 showMenuText	KEYWORD2
 closeMenu	KEYWORD2
 closeMenuText	KEYWORD2
 inlineMenu	KEYWORD2
+inlineMenuCallback	KEYWORD2
 sendRequest	KEYWORD2
 autoIncrement	KEYWORD2
 incrementID	KEYWORD2
 chatIDs	KEYWORD2
 setToken	KEYWORD2
 setBufferSizes	KEYWORD2
+answer	KEYWORD2
+lastBotMsg	KEYWORD2
+lastUsrMsg	KEYWORD2
 
-chatID	KEYWORD2
-name	KEYWORD2
-username	KEYWORD2
-first_name	KEYWORD2
-text	KEYWORD2
 ID	KEYWORD2
+usrID	KEYWORD2
+first_name	KEYWORD2
+username	KEYWORD2
+chatID	KEYWORD2
+text	KEYWORD2
+query	KEYWORD2
+
+FB_unicode	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
 #######################################
-FB_DYNAMIC_HTTP	LITERAL1
+FB_NO_UNICODE	LITERAL1

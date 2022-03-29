@@ -1,4 +1,4 @@
-// тест инлайн меню с удалением сообщения
+// тест инлайн меню с изменением сообщения
 // отправь Show menu для открытия меню
 
 #define WIFI_SSID "login"
@@ -24,27 +24,27 @@ void setup() {
 }
 
 // создать свою функцию вида имя(String& ник, String& сообщение)
-void newMsg(String& name, String& msg) {
-  Serial.println(msg);
-  bot.deleteMessage(0);
-  if (msg == "Menu 1") {
-    bot.inlineMenu("Menu 1", menu2);
+void newMsg(FB_msg& msg) {
+  Serial.println(msg.text);
+  
+  if (msg.text == "Menu 1") {
+    bot.editMenuID(bot.lastBotMsg(), menu2, "", msg.chatID);
     depth = 1;
   }
-  if (msg == "Menu 2") {
-    bot.inlineMenu("Menu 2", menu3);
+  if (msg.text == "Menu 2") {
+    bot.editMenuID(bot.lastBotMsg(), menu3, "", msg.chatID);
     depth = 1;
   }
-  if (msg == "Menu 3") {
-    bot.inlineMenu("Menu 3", menu4);
+  if (msg.text == "Menu 3") {
+    bot.editMenuID(bot.lastBotMsg(), menu4, "", msg.chatID);
     depth = 1;
   }
-  if (msg == "Back" && depth == 1) {
-    bot.inlineMenu("Menu 0", menu1);
+  if (msg.text == "Back" && depth == 1) {
+    bot.editMenuID(bot.lastBotMsg(), menu1, "", msg.chatID);
     depth = 0;
   }
 
-  if (msg == "Show menu") {
+  if (msg.text == "Show menu") {
     bot.inlineMenu("Menu 0", menu1);
   }
 }

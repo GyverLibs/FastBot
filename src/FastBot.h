@@ -11,6 +11,9 @@
     - Вывод меню вместо клавиатуры
     - Вывод инлайн меню в сообщении
     - Возможность включить ручной инкремент новых сообщений
+    - Работает без SSL
+    - Поддержка Unicode (другие языки + эмодзи)
+    - Работает на стандартных библиотеках
     
     AlexGyver, alex@alexgyver.ru
     https://alexgyver.ru/
@@ -33,6 +36,16 @@
         - Оптимизация памяти
         - Ускорил работу
         - Пофиксил работу через раз в сценарии "эхо"
+    v2.0:
+        - Убрал минимум в 3200 мс
+        - Добавил обработку Юникода (русский язык, эмодзи). Спасибо Глебу Жукову!
+        - Из меню удаляются лишние пробелы, работать стало проще
+        - Поддержка esp32
+        - Большая оптимизация
+        - Добавил коллбэки в inlineMenu
+        - Добавил ID юзера
+        - Добавил query для ответа на коллбэк
+        - Добавил редактирование сообщений и кучу всего
 */
 
 /*
@@ -50,57 +63,53 @@
 #define _FastBot_h
 
 #include <Arduino.h>
-#include <WiFiClientSecure.h>
+#ifdef ESP8266
+#include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
 static BearSSL::WiFiClientSecure _FB_client;
 static HTTPClient _FB_httpGet, _FB_httpReq;
+#else
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+WiFiClientSecure _FB_client;
+static HTTPClient _FB_httpGet;
+#define _FB_httpReq _FB_httpGet
+#endif
 
-// вспомогательный класс
-class FB_StringParser {
-public:
-    void reset() {
-        from = to = -1;    
-    }
-    bool update(String& str) {
-        if (to == (int)str.length()) return 0;
-        from = to + 1;
-        to = str.indexOf(',', from);
-        if (to < 0) to = str.length();
-        return 1;    
-    }
-    int from = 0;
-    int to = 0;
-private:
-};
-static FB_StringParser _pars;
-
+#include "utils.h"
 
 struct FB_msg {
-    String& name;   // для совместимости
-    String& username;
-    String& first_name;
-    String& text;
-    String& chatID;
-    String& ID;
+    int32_t ID;         // ID сообщения
+    int32_t usrID;      // ID юзера
+    String& first_name; // имя
+    String& username;   // ник
+    int32_t chatID;     // ID чата
+    String& text;       // текст
+    bool query;         // запрос
 };
 
 // ================================
 class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
-    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 3200) {
+    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 1000) {
         _token = token;
         _ovf = ovf;
         _limit = limit;
         prd = period;
-        _FB_client.setBufferSizes(512, 512);
+        setBufferSizes(512, 512);
         _FB_client.setInsecure();
     }
     
+    // ===================== НАСТРОЙКИ =====================
     // установить размеры буфера на приём и отправку
     void setBufferSizes(uint16_t rx, uint16_t tx) {
+        #ifdef ESP8266
         _FB_client.setBufferSizes(rx, tx);
+        #endif
     }
     
     // макс кол-во сообщений на запрос
@@ -141,11 +150,13 @@ public:
         _callback = nullptr;
         _callback2 = nullptr;
     }
-
+    
+    // ===================== ТИКЕР =====================
     // ручная проверка обновлений
     uint8_t tickManual() {
         uint8_t status = 1;
         String req;
+        req.reserve(100);
         req += F("https://api.telegram.org/bot");
         req += _token;
         req += F("/getUpdates?limit=");
@@ -169,6 +180,17 @@ public:
         return 0;
     }
     
+    // ===================== СООБЩЕНИЯ =====================
+    // ID последнего отправленного ботом сообщения
+    int32_t lastBotMsg() {
+        return _lastBotMsg;
+    }
+    
+    // ID последнего отправленного юзером сообщения
+    int32_t lastUsrMsg() {
+        return _lastUsrMsg;
+    }
+    
     // отправить сообщение в указанный в setChatID чат/чаты
     uint8_t sendMessage(String msg) {
         return sendMessage(msg, chatIDs);
@@ -177,30 +199,102 @@ public:
     // отправить сообщение в указанный здесь чат/чаты
     uint8_t sendMessage(String msg, String id) {
         if (!id.length()) return 5;                                 // не задан ID чата
-        if (id.indexOf(',') < 0) return _FB_sendMessage(msg, id);   // один ID
-        else {                                                      // несколько ID
-            _pars.reset();
-            while (_pars.update(id)) _FB_sendMessage(msg, id.substring(_pars.from, _pars.to));            
-        }
+        if (id.indexOf(',') < 0) return _sendMessage(msg, id);   // один ID
+        FB_Parser ids(id);
+        while (ids.parse()) _sendMessage(msg, ids.str);
         return 6;
     }
     
-    // удалить сообщение со смещением offset в указанный в setChatID чат/чаты
-    uint8_t deleteMessage(int offset) {
+    // ==================== УДАЛЕНИЕ =====================
+    // удалить сообщение со смещением offset в указанном в setChatID чате
+    uint8_t deleteMessage(int32_t offset) {
         return deleteMessage(offset, chatIDs);
     }
     
-    // удалить сообщение со смещением offset в указанном здесь ID чата/чатов
-    uint8_t deleteMessage(int offset, String id) {
-        if (!id.length()) return 5;                                 // не задан ID чата
-        if (id.indexOf(',') < 0) return _deleteMessage(offset, id); // один ID
-        else {                                                      // несколько ID
-            _pars.reset();
-            while (_pars.update(id)) _deleteMessage(offset, id.substring(_pars.from, _pars.to));            
-        }
-        return 6;
+    // удалить сообщение со смещением offset в указанном чате
+    uint8_t deleteMessage(int32_t offset, String id) {
+        if (!id.length()) return 5;                              // не задан ID чата
+        return _deleteMessage(_lastUsrMsg - offset, id.toInt()); // один ID
+    }
+    uint8_t deleteMessage(int32_t offset, int32_t id) {
+        return _deleteMessage(_lastUsrMsg - offset, id); // один ID
     }
     
+    // удалить сообщение id в указанном в setChatID чате
+    uint8_t deleteMessageID(int32_t msgid) {
+        return deleteMessage(msgid, chatIDs);
+    }
+    
+    // удалить сообщение id в указанном чате
+    uint8_t deleteMessageID(int32_t msgid, String id) {
+        if (!id.length()) return 5;                              // не задан ID чата
+        return _deleteMessage(msgid, id.toInt());
+    }
+    uint8_t deleteMessageID(int32_t msgid, int32_t id) {
+        return _deleteMessage(msgid, id);
+    }
+    
+    // ==================== РЕДАКТИРОВАНИЕ =====================
+    // редактировать сообщение со смещением offset в указанном в setChatID чате
+    uint8_t editMessage(int32_t offset, String text) {
+        return editMessage(offset, text, chatIDs);
+    }
+    
+    // редактировать сообщение со смещением offset в указанном чате
+    uint8_t editMessage(int32_t offset, String text, String id) {
+        if (!id.length()) return 5;
+        return _editMessage(_lastUsrMsg - offset, text, id.toInt());
+    }
+    uint8_t editMessage(int32_t offset, String text, int32_t id) {
+        return _editMessage(_lastUsrMsg - offset, text, id); 
+    }
+    
+    // редактировать сообщение id в указанном в setChatID чате
+    uint8_t editMessageID(int32_t msgid, String text) {
+        return editMessageID(msgid, text, chatIDs);
+    }
+    
+    // редактировать сообщение id в указанном чате
+    uint8_t editMessageID(int32_t msgid, String text, String id) {
+        if (!id.length()) return 5;
+        return _editMessage(msgid, text, id.toInt());
+    }
+    uint8_t editMessageID(int32_t msgid, String text, int32_t id) {
+        return _editMessage(msgid, text, id);
+    }
+    
+    // ================ РЕДАКТИРОВАНИЕ ИНЛАЙН =================
+    // редактировать меню id в указанном в setChatID чате
+    uint8_t editMenuID(int32_t msgid, String text, String cback) {
+        return editMenuID(msgid, text, cback, chatIDs);
+    }
+    
+    // редактировать меню id в указанном чате
+    uint8_t editMenuID(int32_t msgid, String text, String cback, String id) {
+        if (!id.length()) return 5;
+        return _editMenu(msgid, text, cback, id.toInt());
+    }
+    uint8_t editMenuID(int32_t msgid, String text, String cback, int32_t id) {
+        return _editMenu(msgid, text, cback, id);
+    }
+    
+    // ответить на callback текстом и true - предупреждением
+    void answer(String text, bool alert = false) {
+        if (_query) {
+            String req;
+            req.reserve(100 + text.length());
+            req += F("https://api.telegram.org/bot");
+            req += _token;
+            req += F("/answerCallbackQuery?callback_query_id=");
+            req += *_query;
+            req += F("&text=");
+            req += text;
+            if (alert) req += F("&show_alert=true");
+            sendRequest(req);
+        }
+    }
+    
+    // ===================== МЕНЮ =====================
     // показать меню в указанном в setChatID чате/чатах
     uint8_t showMenu(String str) {
         return showMenu(str, chatIDs);
@@ -211,10 +305,8 @@ public:
         String msg = F("Show Menu");
         if (!id.length()) return 5;                                 // не задан ID чата
         if (id.indexOf(',') < 0) return _showMenu(str, msg, id);    // один ID
-        else {                                                       // несколько ID
-            _pars.reset();
-            while (_pars.update(id)) _showMenu(str, msg, id.substring(_pars.from, _pars.to));            
-        }
+        FB_Parser ids(id);
+        while (ids.parse()) _showMenu(str, msg, ids.str);
         return 6;
     }
     
@@ -227,10 +319,8 @@ public:
     uint8_t showMenuText(String msg, String str, String id) {
         if (!id.length()) return 5;                                 // не задан ID чата
         if (id.indexOf(',') < 0) return _showMenu(str, msg, id);    // один ID
-        else {                                                      // несколько ID
-            _pars.reset();
-            while (_pars.update(id)) _showMenu(str, msg, id.substring(_pars.from, _pars.to));            
-        }
+        FB_Parser ids(id);
+        while (ids.parse()) _showMenu(str, msg, ids.str);
         return 6;
     }
     
@@ -244,10 +334,8 @@ public:
         String msg = F("Close Menu");
         if (!id.length()) return 5;                             // не задан ID чата
         if (id.indexOf(',') < 0) return _closeMenu(msg, id);    // один ID
-        else {                                                  // несколько ID
-            _pars.reset();
-            while (_pars.update(id)) _closeMenu(msg, id.substring(_pars.from, _pars.to));            
-        }
+        FB_Parser ids(id);
+        while (ids.parse()) _closeMenu(msg, ids.str);
         return 6;
     }
     
@@ -260,10 +348,8 @@ public:
     uint8_t closeMenuText(String msg, String id) {
         if (!id.length()) return 5;                             // не задан ID чата
         if (id.indexOf(',') < 0) return _closeMenu(msg, id);    // один ID
-        else {                                                  // несколько ID
-            _pars.reset();
-            while (_pars.update(id)) _closeMenu(msg, id.substring(_pars.from, _pars.to));            
-        }
+        FB_Parser ids(id);
+        while (ids.parse()) _closeMenu(msg, ids.str);
         return 6;
     }
     
@@ -274,20 +360,40 @@ public:
     
     // показать инлайн меню в указанном здесь чате/чатах
     uint8_t inlineMenu(String msg, String str, String id) {
-        if (!id.length()) return 5;                             // не задан ID чата
-        if (id.indexOf(',') < 0) return _inlineMenu(msg, str, id);     // один ID
-        else {                                                  // несколько ID
-            _pars.reset();
-            while (_pars.update(id)) _inlineMenu(msg, str, id.substring(_pars.from, _pars.to));            
-        }
+        if (!id.length()) return 5;                                     // не задан ID чата
+        String cb;
+        if (id.indexOf(',') < 0) return _inlineMenu(msg, str, id, cb);  // один ID
+        FB_Parser ids(id);
+        while (ids.parse()) _inlineMenu(msg, str, ids.str, cb);
         return 6;
     }
-
+    
+    // показать инлайн меню с коллбэками в указанном в setChatID чате/чатах
+    uint8_t inlineMenuCallback(String msg, String str, String cbacks) {
+        return inlineMenuCallback(msg, str, cbacks, chatIDs);
+    }
+    
+    // показать инлайн меню в указанном здесь чате/чатах
+    uint8_t inlineMenuCallback(String msg, String str, String cbacks, String id) {
+        if (!id.length()) return 5;
+        if (id.indexOf(',') < 0) return _inlineMenu(msg, str, id, cbacks);  // один ID
+        FB_Parser ids(id);
+        while (ids.parse()) _inlineMenu(msg, str, ids.str, cbacks);
+        return 6;
+    }
+    
+    // ===================== ВСЯКОЕ =====================
     // отправить запрос
     uint8_t sendRequest(String& req) {
         uint8_t status = 1;
         if (_FB_httpReq.begin(_FB_client, req)) {
             if (_FB_httpReq.GET() != HTTP_CODE_OK) status = 3;
+            const String* str = &_FB_httpReq.getString();
+            int idx = str->indexOf("message_id");
+            if (idx > 0 && idx < (int)str->length()) {
+                int end = str->indexOf(",\"", idx);
+                _lastBotMsg = str->substring(idx + 12, end).toInt();
+            }
             _FB_httpReq.end();
         } else status = 4;
         return status;
@@ -304,22 +410,51 @@ public:
     }
     
     // для непосредственного редактирования
-    String chatIDs = "";
+    String chatIDs;
     
 private:
-    uint8_t _deleteMessage(int offset, String id) {
+    uint8_t _editMenu(int32_t msgid, String& str, String& cbck, int32_t id) {
         String req;
+        req.reserve(100 + str.length());
+        req += F("https://api.telegram.org/bot");
+        req += _token;
+        req += F("/editMessageReplyMarkup?chat_id=");
+        req += id;
+        req += F("&message_id=");
+        req += msgid;
+        _addInlineMenu(req, str, cbck);
+        return sendRequest(req);
+    }
+    
+    uint8_t _editMessage(int32_t msgid, String& text, int32_t id) {
+        String req;
+        req.reserve(100 + text.length());
+        req += F("https://api.telegram.org/bot");
+        req += _token;
+        req += F("/editMessageText?chat_id=");
+        req += id;
+        req += F("&message_id=");
+        req += msgid;
+        req += F("&text=");
+        req += text;
+        return sendRequest(req);
+    }
+    
+    uint8_t _deleteMessage(int32_t msgid, int32_t id) {
+        String req;
+        req.reserve(100);
         req += F("https://api.telegram.org/bot");
         req += _token;
         req += F("/deleteMessage?chat_id=");
         req += id;
         req += F("&message_id=");
-        req += lastMsg - offset;
+        req += msgid;
         return sendRequest(req);
     }
     
-    uint8_t _FB_sendMessage(String& msg, String id) {
+    uint8_t _sendMessage(String& msg, String& id) {
         String req;
+        req.reserve(100 + msg.length());
         req += F("https://api.telegram.org/bot");
         req += _token;
         req += F("/sendMessage?chat_id=");
@@ -329,8 +464,9 @@ private:
         return sendRequest(req);
     }
     
-    uint8_t _showMenu(String& str, String& msg, String id) {
+    uint8_t _showMenu(String& str, String& msg, String& id) {
         String req;
+        req.reserve(100 + str.length());
         req += F("https://api.telegram.org/bot");
         req += _token;
         req += F("/sendMessage?chat_id=");
@@ -340,16 +476,25 @@ private:
         req += F("&reply_markup={\"keyboard\":[[\"");
         for (uint16_t i = 0; i < str.length(); i++) {
             char c = str[i];
-            if (c == '\t') req += F("\",\"");
-            else if (c == '\n') req += F("\"],[\"");
+            char c1 = str[i + 1];
+            if (c == ' ' && (c1 == '\t' || c1 == '\n')) continue;
+            if (c == '\t') {
+                req += F("\",\"");
+                if (c1 == ' ') i++;
+            }
+            else if (c == '\n') {
+                req += F("\"],[\"");
+                if (c1 == ' ') i++;
+            }
             else req += c;
         }
         req += F("\"]],\"resize_keyboard\":true}");
         return sendRequest(req);
     }
     
-    uint8_t _closeMenu(String& msg, String id) {
+    uint8_t _closeMenu(String& msg, String& id) {
         String req;
+        req.reserve(100);
         req += F("https://api.telegram.org/bot");
         req += _token;
         req += F("/sendMessage?chat_id=");
@@ -360,116 +505,123 @@ private:
         return sendRequest(req);
     }
     
-    uint8_t _inlineMenu(String& msg, String& str, String id) {
+    uint8_t _inlineMenu(String& msg, String& str, String& id, String& cback) {
         String req;
+        req.reserve(100 + str.length());
         req += F("https://api.telegram.org/bot");
         req += _token;
         req += F("/sendMessage?chat_id=");
         req += id;
         req += F("&text=");
         req += msg;
-        req += F("&reply_markup={\"inline_keyboard\":[[{");
-        
-        String buf = "";
-        for (uint16_t i = 0; i < str.length(); i++) {
-            char c = str[i];
-            if (c == '\t') {
-                addInlineButton(req, buf);
-                req += F("},{");
-                buf = "";
-            }
-            else if (c == '\n') {
-                addInlineButton(req, buf);
-                req += F("}],[{");
-                buf = "";
-            }
-            else buf += c;
-        }
-        addInlineButton(req, buf);
-        req += F("}]]}");
+        _addInlineMenu(req, str, cback);
         return sendRequest(req);
     }
     
-    void addInlineButton(String& str, String& msg) {
+    void _addInlineMenu(String& req, String& str, String& cback) {
+        req += F("&reply_markup={\"inline_keyboard\":[[{");
+        int start = 0;
+        int mode, end;
+        FB_Parser cbacks(cback);
+        while (1) {
+            int t = str.indexOf('\t', start);
+            int n = str.indexOf('\n', start);
+            if (n < 0 && t < 0) mode = 2, end = str.length();
+            else if (n < 0) mode = 0, end = t;
+            else if (t < 0) mode = 1, end = n;
+            else mode = t > n, end = min(t, n);
+            String s = str.substring(start, end);
+            s.trim();
+            if (cback.length() > 0) {
+                cbacks.parse();
+                addInlineButton(req, s, cbacks.str);
+            } else addInlineButton(req, s, s);
+            if (mode == 0) req += F("},{");
+            else if (mode == 1) req += F("}],[{");
+            if (mode == 2) break;
+            start = end + 1;
+        }
+        req += F("}]]}");
+    }
+    
+    void addInlineButton(String& str, String& msg, String& data) {
         str += F("\"text\":\"");
         str += msg;
         str += F("\",\"callback_data\":\"");
-        str += msg;
+        str += data;
         str += '\"';
     }
     
+    bool find(const String& str, String& dest, int16_t& start, int16_t& end, String from, String to, int16_t len, int16_t pos) {
+        int strPos = str.indexOf(from, start);
+        if (strPos < 0 || strPos > pos) return 0;
+        start = strPos + len;
+        end = str.indexOf(to, start);
+        dest = str.substring(start, end);
+        start = end;
+        return 1;
+    }
+
     uint8_t parse(const String& str, uint16_t size) {
-        if (!str.startsWith(F("{\"ok\":true"))) return 3;  // ошибка запроса (неправильный токен итд)
-        if (size > _ovf) {                              // переполнен
+        if (!str.startsWith(F("{\"ok\":true"))) return 3;       // ошибка запроса (неправильный токен итд)
+        if (size > _ovf) {                                      // переполнен
             int IDpos = str.indexOf(F("{\"update_id\":"), 0);
             if (IDpos > 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt();
             ID++;
             return 2;
         }
 
-        int IDpos = str.indexOf(F("{\"update_id\":"), 0);  // первая позиция ключа update_id
-        int counter = 0;
+        int16_t IDpos = str.indexOf(F("{\"update_id\":"), 0);   // первая позиция ключа update_id
+        int16_t counter = 0;
         while (true) {
-            if (IDpos > 0 && IDpos < (int)str.length()) {      // если есть что разбирать
+            if (IDpos > 0 && IDpos < (int16_t)str.length()) {           // если есть что разбирать
                 if (ID == 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt() + 1;   // холодный запуск, ищем ID
                 else counter++;                                                                     // иначе считаем пакеты
-                int textPos = IDpos;                                  // стартовая позиция для поиска
-                int endPos;
-                IDpos = str.indexOf(F("{\"update_id\":"), IDpos + 1);    // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
-                if (IDpos == -1) IDpos = str.length();                // если конец пакета - для удобства считаем что позиция ID в конце
+                int16_t textPos = IDpos;                                // стартовая позиция для поиска
+                int16_t endPos;
+                IDpos = str.indexOf(F("{\"update_id\":"), IDpos + 1);   // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
+                if (IDpos == -1) IDpos = str.length();                  // если конец пакета - для удобства считаем что позиция ID в конце
+                
+                String query;
+                find(str, query, textPos, endPos, F("query\":{\"id\":\""), F(",\""), 14, IDpos);
+                _query = &query;
+                
+                String message_id;
+                if (!find(str, message_id, textPos, endPos, F("\"message_id\":"), F(",\""), 13, IDpos)) continue;
+                _lastUsrMsg = message_id.toInt();
+                
+                String usrID;
+                if (!find(str, usrID, textPos, endPos, F("\"id\":"), F(",\""), 5, IDpos)) continue;
+                
+                String first_name;
+                find(str, first_name, textPos, endPos, F("\"first_name\":\""), F("\""), 14, IDpos);
 
-                // ищем ID сообщения 
-                textPos = str.indexOf(F("\"message_id\":"), textPos);
-                if (textPos < 0 || textPos > IDpos) continue;
-                endPos = str.indexOf(F(",\""), textPos);
-                String msgID = str.substring(textPos + 13, endPos);
-                lastMsg = msgID.toInt();
+                String username;
+                find(str, username, textPos, endPos, F("\"username\":\""), F("\""), 12, IDpos);
                 
-                // ищем имя юзера
-                String username = "";
-                int namePos = str.indexOf(F("\"username\":\""), textPos);
-                if (namePos > 0 || namePos < IDpos) {
-                    endPos = str.indexOf(F("\",\""), namePos);
-                    username = str.substring(namePos + 12, endPos);
-                }
-                String first_name = "";
-                namePos = str.indexOf(F("\"first_name\":\""), textPos);
-                if (namePos > 0 || namePos < IDpos) {
-                    endPos = str.indexOf(F("\",\""), namePos);
-                    first_name = str.substring(namePos + 14, endPos);
-                }
-                textPos = endPos;
-                
-                // ищем ID чата
-                textPos = str.indexOf(F("\"chat\":{\"id\":"), textPos);
-                if (textPos < 0 || textPos > IDpos) continue;
-                endPos = str.indexOf(F(",\""), textPos);
-                String chatID = str.substring(textPos + 13, endPos);
-                textPos = endPos;
-                
+                String chatID;
+                if (!find(str, chatID, textPos, endPos, F("\"chat\":{\"id\":"), F(",\""), 13, IDpos)) continue;
                 // установлена проверка на ID чата - проверяем соответствие, если что - выходим
                 if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;
-
-                // ищем сообщение
+                
                 String text;
-                int dataPos = str.indexOf(F("\"data\":"), textPos);  // вдруг это callback_data
-                if (dataPos > 0 && dataPos < IDpos) {
-                    endPos = str.indexOf(F("\"}}"), textPos);
-                    text = str.substring(dataPos + 8, endPos);     // забираем callback_data
+                int dataPos = str.indexOf(F("\"data\":\""), textPos);
+                if (dataPos < 0 || dataPos > IDpos) {
+                    if (!find(str, text, textPos, endPos, F("\"text\":\""), F("\""), 8, IDpos)) continue;
                 } else {
-                    textPos = str.indexOf(F(",\"text\":\""), textPos);
-                    if (textPos < 0 || textPos > IDpos) continue;
-                    endPos = str.indexOf(F("\"}}"), textPos);
-                    int endPos2 = str.indexOf(F("\",\"entities"), textPos);
-                    if (endPos > 0 && endPos2 > 0) endPos = min(endPos, endPos2);
-                    else if (endPos < 0) endPos = endPos2;
-                    if (str[textPos + 9] == '/') textPos++;
-                    text = str.substring(textPos + 9, endPos);       // забираем обычное сообщение
+                    find(str, text, textPos, endPos, F("\"data\":\""), F("\""), 8, IDpos);
                 }
-                if (*_callback) _callback(username, text);
 
-                FB_msg message = (FB_msg){username, username, first_name, text, chatID, msgID};
+                #ifndef FB_NO_UNICODE
+                FB_unicode(first_name);
+                FB_unicode(username);
+                FB_unicode(text);
+                #endif
+
+                FB_msg message = (FB_msg){message_id.toInt(), usrID.toInt(), first_name, username, chatID.toInt(), text, (query.length() > 0)};
                 if (*_callback2) _callback2(message);
+                if (*_callback) _callback(username, text);
+                _query = nullptr;
             } else break;   // IDpos > 0
         }
         if (_incr) ID += counter;
@@ -478,11 +630,12 @@ private:
 
     void (*_callback)(String& name, String& text) = nullptr;
     void (*_callback2)(FB_msg& msg) = nullptr;
-    String _token = "";    
-    uint16_t _ovf = 5000, prd = 3200, _limit = 10;
+    String _token = "";
+    String* _query = nullptr;
+    uint16_t _ovf = 10000, prd = 1000, _limit = 10;
     long ID = 0;
     uint32_t tmr = 0;    
     bool _incr = true;
-    uint32_t lastMsg = 0;
+    int32_t _lastUsrMsg = 0, _lastBotMsg = 0;
 };
 #endif

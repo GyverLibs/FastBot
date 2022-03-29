@@ -1,5 +1,4 @@
-// бот отправляет обратно сообщения из чата (эхо-бот)
-
+// бот меняет своё сообщение на отправленное в чат
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
 #define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
@@ -13,9 +12,10 @@ void setup() {
 
   bot.setToken(BOT_TOKEN);
   bot.attach(newMsg);
+  bot.setChatID(CHAT_ID);
+  bot.sendMessage("Edit me!");
 }
 
-// обработчик сообщений
 void newMsg(FB_msg& msg) {
   // выводим ID чата, имя юзера и текст сообщения
   Serial.print(msg.chatID);     // ID чата 
@@ -23,9 +23,8 @@ void newMsg(FB_msg& msg) {
   Serial.print(msg.username);   // логин
   Serial.print(", ");
   Serial.println(msg.text);     // текст
-    
-  // отправить сообщение обратно
-  bot.sendMessage(msg.text, msg.chatID);  
+  
+  bot.editMessageID(bot.lastBotMsg(), msg.text, msg.chatID);
 }
 
 void loop() {

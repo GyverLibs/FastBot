@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-1.7-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.0-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -12,13 +12,17 @@
 - Вывод меню вместо клавиатуры
 - Вывод инлайн меню в сообщении
 - Возможность включить ручной инкремент новых сообщений
+- Работает без SSL
+- Поддержка Unicode (другие языки + эмодзи)
+- Работает на стандартных библиотеках
 
 ### Совместимость
-ESP8266
+ESP8266, ESP32
 
 ## Содержание
 - [Установка](#install)
 - [Инициализация](#init)
+- [Документация](#docs)
 - [Использование](#usage)
 - [Пример](#example)
 - [Версии](#versions)
@@ -48,67 +52,117 @@ FastBot bot(токен, лимит, порог, период);
 // токен - уникальный код бота, берётся у BotFather
 // лимит - количество сообщений, получаемое из одного запроса (по умолч. 10)
 // порог - количество символов, при котором API запрос будет считаться слишком большим и будет пропущен (по умолч. 10000)
-// период - период автоматического опроса бота в мс (по умолч. 3200) Не чаще 3200 мс! См. ниже
+// период - период автоматического опроса бота в мс (по умолч. 1000)
 ```
 
-<a id="usage"></a>
-## Использование
+<a id="docs"></a>
+## Документация
 ```cpp
-// настройки
-void setChatID(String chatID);                  // установка ID чата для парсинга сообщений. Можно указать несколько через запятую
+// ============== НАСТРОЙКИ ==============
 void setLimit(int limit);                       // макс кол-во сообщений на запрос
-void setOvf(int ovf);                           // макс символов
-void setPeriod(int period);                     // период опроса. Не чаще 3200 мс! См. ниже
-void setToken(String token);                    // изменить/задать токен
-void setBufferSizes(uint16_t rx, uint16_t tx);  // установить размеры буфера на приём и отправку, по умолч. 512 и 512 байт
+void setOvf(int ovf);                           // макс кол-во символов
+void setPeriod(int period);                     // период опроса в мс (по умолч. 1000)
+void setToken(String token);                    // изменить/задать токен бота
+void setBufferSizes(uint16_t rx, uint16_t tx);  // установить размеры буфера на приём и отправку, по умолч. 512 и 512 байт (только для esp8266)
+void setChatID(String chatID);                  // установка ID чата для парсинга сообщений. Можно несколько через запятую ("id1,id2,id3")
     
-// парсинг
+
+// =============== ПАРСИНГ ===============
 void attach(void (*handler)(String&, String&)); // подключение обработчика сообщений
 void attach(void (*FB_msg)(msg&));              // подключение обработчика сообщений
 void detach();                                  // отключение ВСЕХ ОБРАБОТЧИКОВ СООБЩЕНИЙ
 
-// структура входящих сообщений FB_msg
-String& chatID      // id чата
-String& username    // логин пользователя
-String& first_name  // имя пользователя
-String& text        // текст сообщения
-String& ID          // ID сообщения
 
-// тикер
+// ================ ТИКЕР =================
 uint8_t tickManual();                           // ручная проверка обновлений
 uint8_t tick();                                 // проверка обновлений по таймеру
 
-// сообщения
+
+// ============== СООБЩЕНИЯ ===============
+int32_t lastBotMsg();                           // ID последнего отправленного ботом сообщения
+int32_t lastUsrMsg();                           // ID последнего отправленного юзером сообщения
 uint8_t sendMessage(String msg);                // отправить сообщение в указанный в setChatID чат/чаты
 uint8_t sendMessage(String msg, String id);     // отправить сообщение в указанный здесь чат/чаты (через запятую)
-uint8_t deleteMessage(int offset);              // удалить сообщение со смещением offset в указанный в setChatID чат/чаты
-uint8_t deleteMessage(int offset, String id);   // удалить сообщение со смещением offset в указанном здесь ID чата/чатов
+void answer(String text, bool alert = false);   // ответить на callback текстом и true - предупреждением
+ 
+ 
+// ============== УДАЛИТЬ ===============
+uint8_t deleteMessage(int offset);              // удалить сообщение со смещением offset в указанном в setChatID чате
+uint8_t deleteMessage(int offset, String id);   // удалить сообщение со смещением offset в указанном здесь чате
+uint8_t deleteMessageID(int32_t msgid);         // удалить сообщение id в указанном в setChatID чате
+uint8_t deleteMessageID(int32_t msgid, String id);  // удалить сообщение id в указанном чате
 
-// меню
-uint8_t showMenu(String str);                   // показать меню в указанном в setChatID чате
+
+// ============ РЕДАКТИРОВАТЬ =============
+// редактировать сообщение со смещением offset в указанном в setChatID чате
+uint8_t editMessage(int32_t offset, String text);
+
+// редактировать сообщение со смещением offset в указанном чате
+uint8_t editMessage(int32_t offset, String text, String id);
+uint8_t editMessage(int32_t offset, String text, int32_t id);
+
+// редактировать сообщение id в указанном в setChatID чате
+uint8_t editMessageID(int32_t msgid, String text);
+
+// редактировать сообщение id в указанном чате
+uint8_t editMessageID(int32_t msgid, String text, String id);
+uint8_t editMessageID(int32_t msgid, String text, int32_t id);
+   
+
+// ============= ОБЫЧНОЕ МЕНЮ =============
+uint8_t showMenu(String str);                   // показать меню (str) в указанном в setChatID чате
 uint8_t showMenu(String str, String id);        // показать меню в указанном здесь чате/чатах (через запятую)
 uint8_t closeMenu();                            // скрыть меню в указанном в setChatID чате
 uint8_t closeMenu(String id);                   // скрыть меню в указанном здесь чате/чатах (через запятую)
 
-uint8_t showMenuText(String msg, String str);               // показать меню str в указанном в setChatID чате + сообщение msg
-uint8_t showMenuText(String msg, String str, String id);    // показать меню str в указанном здесь чате/чатах (через запятую) + сообщение msg
-uint8_t closeMenuText(String msg);                          // скрыть меню в указанном в setChatID чате + сообщение msg
-uint8_t closeMenuText(String msg, String id);               // скрыть меню в указанном здесь чате/чатах (через запятую) + сообщение msg
 
-// инлайн меню
-uint8_t inlineMenu(String msg, String str);     // показать инлайн меню в указанном в setChatID чате
-uint8_t inlineMenu(String msg, String str, String id);  // показать инлайн меню в указанном здесь чате/чатах (через запятую)
+// ======== ОБЫЧНОЕ МЕНЮ С ТЕКСТОМ =========
+// показать меню (str) в указанном в setChatID чате + сообщение (msg)
+uint8_t showMenuText(String msg, String str);
 
-// сервис
-uint8_t sendRequest(String& req);               // отправить запрос
+// показать меню (str) в указанном здесь чате/чатах (через запятую) + сообщение (msg)
+uint8_t showMenuText(String msg, String str, String id);
+
+// скрыть меню в указанном в setChatID чате + сообщение (msg)
+uint8_t closeMenuText(String msg);
+
+// скрыть меню в указанном здесь чате/чатах (через запятую) + сообщение (msg)
+uint8_t closeMenuText(String msg, String id);
+
+
+// ============= ИНЛАЙН МЕНЮ =============
+// показать инлайн меню (str) в указанном в setChatID чате + сообщение (msg)
+uint8_t inlineMenu(String msg, String str);
+
+// показать инлайн меню (str) в указанном здесь чате/чатах (через запятую) + сообщение (msg)
+uint8_t inlineMenu(String msg, String str, String id);
+
+
+// ======= ИНЛАЙН МЕНЮ С КОЛЛБЭКОМ =======
+// показать инлайн меню (str) с коллбэком (cbck) в указанном в setChatID чате + сообщение (msg)
+uint8_t inlineMenuCallback(String msg, String str, String cbck);
+
+// показать инлайн меню (str) с коллбэком (cbck) в указанном здесь чате/чатах (через запятую) + сообщение (msg)
+uint8_t inlineMenuCallback(String msg, String str, String cbck, String id);
+
+
+// ======= РЕДАКТИРОВАТЬ ИНЛАЙН МЕНЮ С КОЛЛБЭКОМ =======
+// редактировать меню id в указанном в setChatID чате
+uint8_t editMenuID(int32_t msgid, String text, String cback);
+
+// редактировать меню id в указанном чате
+uint8_t editMenuID(int32_t msgid, String text, String cback, String id);
+uint8_t editMenuID(int32_t msgid, String text, String cback, int32_t id);
+
+
+// ================ СЕРВИС ===============
 void autoIncrement(boolean incr);               // авто инкремент сообщений (по умолч включен)
 void incrementID(uint8_t val);                  // вручную инкрементировать ID на val
 String chatIDs;                                 // указанная в setChatID строка, для отладки и редактирования списка
+uint8_t sendRequest(String& req);               // отправить запрос
 
-// для отправки меню используется следующая конструкция:
-// \t - горизонтальное разделение кнопок, \n - вертикальное
-// Меню 3x1: "Menu1 \t Menu2 \t Menu3 \n Menu4"
 
+// =============== СТАТУС ================
 // Многие функции возвращают статус:
 // 0 - ожидание
 // 1 - ОК
@@ -117,124 +171,114 @@ String chatIDs;                                 // указанная в setChat
 // 4 - Ошибка подключения
 // 5 - не задан chat ID
 // 6 - множественная отправка, статус неизвестен
+
+
+// ========== ДЕФАЙНЫ НАСТРОЕК ==========
+#define FB_NO_UNICODE   // отключить конвертацию Unicode
 ```
 
-Примечания:
-- Опрос сообщений *(активный вызов tick() по встроенному таймеру или вызов tickManual())* занимает ~70 миллисекунд
-- Период опроса (setPeriod()) нет смысла ставить меньше 3200мс, так как Телеграм не позволяет запрашивать данные чаще и программа повиснет на 3 секунды в ожидании ответа сервера!
+<a id="usage"></a>
+## Использование
+### ID чата/чатов
+Устанавливается через `setChatID()`, куда можно передать одиночный ID или сразу несколько через запятую: `setChatID("id1,id2,id3")`
 
-<a id="example"></a>
-## Особенности парсинга сообщений
+### Парсинг сообщений
 Сообщения автоматически читаются в `tick()`, при поступлении нового сообщения вызывается указанная функция-обработчик. Но тут есть варианты:
 - Если задан ID чата/чатов (через `setChatID()`) - происходит автоматическое отсеивание сообщений НЕ из указанных чатов
-- Если ID чата/чатов не задан - сообщение будет обработано, т.е. вызван обработчик
+- Если ID чата/чатов не задан (через `setChatID()`) - сообщение будет обработано, т.е. вызван обработчик
 
 Обработчик подключается при помощи `attach(FB_msg&)` или `attach(String&, String&)` (устаревший)
 - Создаём в скетче свою функцию вида `void функция(FB_msg& сообщение)`
 - Вызываем `attach(функция)`
 - Эта функция будет автоматически вызвана при входящем сообщении, если ID чата совпадают или не настроены
 - Внутри этой функции можно пользоваться переданной переменной `сообщение`, которая имеет тип `FB_msg` (структура) и содержит в себе:
-  - `chatID` - id чата
-  - `username` - логин пользователя
-  - `first_name` - имя пользователя
-  - `text` - текст сообщения
-  - `ID` - ID сообщения
+    - `int32_t ID` - ID сообщения
+    - `int32_t usrID` - ID юзера
+    - `String first_name` - имя юзера
+    - `String username` - ник юзера
+    - `int32_t chatID` - ID чата
+    - `String text` - текст сообщения
+    - `bool query` - флаг запроса
 
-Минимальный пример:
+### Минимальный пример
 ```cpp
 void setup() {
   // подключаемся к WiFi
-  // .............
-  
-  // подключаем обработчик сообщений
-  bot.attach(newMsg);
+  bot.attach(newMsg);   // подключаем обработчик сообщений
 }
 
-// функция-обработчик
 void newMsg(FB_msg& msg) {
-  // выводим ID чата, имя юзера и текст сообщения
-  Serial.print(msg.chatID);
-  Serial.print(", ");
+  // выводим имя юзера и текст сообщения
   Serial.print(msg.username);
   Serial.print(", ");
   Serial.println(msg.text);
 }
 
-// проверка происходит в лупе
 void loop() {
   bot.tick();
 }
 ```
 
+### Форматирование меню
+Для отправки меню используется строка с именами кнопок и специальным форматированием:
+- `\t` - горизонтальное разделение кнопок
+- `\n` - вертикальное разделение кнопок
+- Лишние пробелы вырезаются автоматически
+
+Пример меню 3x1: `"Menu1 \t Menu2 \t Menu3 \n Menu4"`
+
+Результат:
+```cpp
+ _______________________
+|       |       |       |
+| Menu1 | Menu2 | Menu3 |
+|_______|_______|_______|
+|                       |
+|       M e n u 3       |
+|_______________________|
+```
+
+### Обычное меню
+Большое меню в нижней части чата.
+```cpp
+showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4");
+```
+Нажатие на кнопку **отправляет текст с кнопки**.
+
+### Инлайн меню
+Меню в сообщении. Требует ввода имени меню:
+```cpp
+inlineMenu("MyMenu", "Menu1 \t Menu2 \t Menu3 \n Menu4");
+```
+Нажатие на кнопку **отправляет текст с кнопки**.
+
+### Инлайн меню с коллбэком
+Меню в сообщении. Коллбэк позволяет задать каждой кнопке уникальный текст, который будет отправляться боту вместо текста с кнопки. 
+Список коллбэков перечисляется через запятую по порядку:
+```cpp
+String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
+String cback1 = F("action1,action2,action3,back");
+bot.inlineMenuCallback("Menu 1", menu1, cback1);
+```
+Нажатие на кнопку **отправляет заданный текст**.
+
+### Ответ на коллбэк
+При нажатии на кнопку инлайн-меню боту отправляется коллбэк, в обработчике сообщения будет поднят флаг `query`. 
+Можно ответить на коллбэк при помощи:
+- `answer(текст)` - всплывающий текст
+- `answer(текст, true)` - окно с предупреждением и кнопкой ОК
+
+Пример:
+```cpp
+void newMsg(FB_msg& msg) {
+  if (msg.query) bot.answer("Hello!", true);
+}
+```
+
+<a id="example"></a>
 ## Пример
 ```cpp
-// узнать токен бота можно у BotFather
 
-#define WIFI_SSID "login"
-#define WIFI_PASS "pass"
-#define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
-#define CHAT_ID "574578754"
-
-#include <ESP8266WiFi.h>
-#include "FastBot.h"
-FastBot bot(BOT_TOKEN);
-
-void setup() {
-  delay(2000);
-  Serial.begin(115200);
-  Serial.println();
-
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    if (millis() > 15000) ESP.restart();
-  }
-  Serial.println("Connected");
-  
-  // можно сменить токен
-  //bot.setToken(BOT_TOKEN);
-
-  // установить ID чата, чтобы принимать сообщения только из него
-  // узнать ID можно из ручного запроса в браузере
-  bot.setChatID(CHAT_ID); // передай "" (пустую строку) чтобы отключить проверку
-
-  // подключаем функцию-обработчик
-  bot.attach(newMsg);
-
-  // отправить сообщение (работает, если указан CHAT_ID)
-  bot.sendMessage("Hello, World!");
-  
-  //bot.sendMessage("Hello, World!", "123456789");  // отправить в чат с указанным ID
-
-  // показать юзер меню (\t - горизонтальное разделение кнопок, \n - вертикальное
-  bot.showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4");
-
-  // скрыть юзер меню
-  //delay(3000);
-  //bot.closeMenu();
-
-  // отправить инлайн меню (\t - горизонтальное разделение кнопок, \n - вертикальное
-  // (текст сообщения, кнопки)
-  bot.inlineMenu("Choose wisely", "Answer 1 \t Answer 2 \t Answer 3 \n Answer 4");
-}
-
-// создать свою функцию вида имя(FB_msg& сообщение)
-void newMsg(FB_msg& msg) {
-  // выводим ID чата, имя юзера и текст сообщения
-  Serial.print(msg.chatID);
-  Serial.print(", ");
-  Serial.print(msg.username);
-  Serial.print(", ");
-  Serial.println(msg.text);  
-}
-
-// можно вручную дёргать по одному сообщению при помощи tickManual()
-// тогда "лимит" при инициализации поставить 1
-void loop() {
-  // тикаем в луп
-  bot.tick();
-}
 ```
 
 <a id="versions"></a>
@@ -255,6 +299,15 @@ void loop() {
   - Оптимизация памяти
   - Ускорил работу
   - Пофиксил работу через раз в сценарии "эхо"
+- v2.0:
+    - Убрал минимум в 3200 мс
+    - Добавил обработку Юникода (русский язык, эмодзи). Спасибо Глебу Жукову!
+    - Из меню удаляются лишние пробелы, работать стало проще
+    - Поддержка esp32
+    - Большая оптимизация
+    - Добавил коллбэки в inlineMenu
+    - Добавил ID юзера
+    - Добавил редактирование сообщений и кучу всего
 
 <a id="feedback"></a>
 ## Баги и обратная связь
