@@ -41,6 +41,7 @@ lastBotMsg	KEYWORD2
 lastUsrMsg	KEYWORD2
 setTextMode	KEYWORD2
 replyMessage	KEYWORD2
+notify	KEYWORD2
 
 ID	KEYWORD2
 usrID	KEYWORD2

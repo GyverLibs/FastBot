@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.1-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.2-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -89,6 +89,7 @@ uint8_t replyMessage(String msg, int32_t replyID, String id);
 
 void answer(String text, bool alert = false);   // ответить на callback текстом (text) и режимом (alert) (true - предупреждение)
 void setTextMode(uint8_t mode);                 // режим обработки текста: FB_TEXT, FB_MARKDOWN, FB_HTML
+void notify(bool mode);                         // true/false вкл/выкл уведомления от сообщений бота (по умолч. вкл)
 
 int32_t lastBotMsg();                           // ID последнего отправленного ботом сообщения
 int32_t lastUsrMsg();                           // ID последнего отправленного юзером сообщения
@@ -114,6 +115,10 @@ uint8_t editMessageID(int32_t msgid, String text, String id);
 uint8_t showMenu(String menu);
 uint8_t showMenu(String menu, String id);
 
+// единоразовое меню (закроется при выборе)
+uint8_t showMenu(String menu, true);
+uint8_t showMenu(String menu, String id, true);
+
 // скрыть меню в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов 
 uint8_t closeMenu();
 uint8_t closeMenu(String id);
@@ -123,6 +128,10 @@ uint8_t closeMenu(String id);
 // сообщение (msg) + показать меню (menu) в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов 
 uint8_t showMenuText(String msg, String menu);
 uint8_t showMenuText(String msg, String menu, String id);
+
+// единоразовое меню (закроется при выборе)
+uint8_t showMenuText(String msg, String menu, true);
+uint8_t showMenuText(String msg, String menu, String id, true);
 
 // сообщение (msg) + скрыть меню в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов 
 uint8_t closeMenuText(String msg);
@@ -148,7 +157,7 @@ uint8_t editMenuID(int32_t msgid, String menu, String cback, String id);
 
 
 // ================ СЕРВИС ===============
-uint8_t sendRequest(String& req);               // отправить запрос (начиная с /, например /sendMessage?...)
+uint8_t sendRequest(String& req);               // отправить запрос (https://api.telegram.org/bot...)
 void autoIncrement(boolean incr);               // авто инкремент сообщений (по умолч включен)
 void incrementID(uint8_t val);                  // вручную инкрементировать ID на val
 String chatIDs;                                 // указанная в setChatID строка, для отладки и редактирования списка
@@ -305,6 +314,10 @@ void newMsg(FB_msg& msg) {
     - Ещё оптимизация
     - Добавил форматирование текста (markdown, html)
     - Добавил ответ на сообщение
+- v2.2:
+    - Оптимизация памяти
+    - Добавил notify() - уведомления от сообщений бота
+    - Добавил единоразовый показ клавиатуры
 
 <a id="feedback"></a>
 ## Баги и обратная связь
