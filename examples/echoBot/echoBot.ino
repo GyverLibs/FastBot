@@ -1,17 +1,15 @@
-// бот отправляет обратно сообщения из чата (эхо-бот)
+// бот отправляет обратно сообщения из любого чата (эхо-бот)
 
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
 #define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
-#define CHAT_ID "574578754"
 
 #include <FastBot.h>
-FastBot bot;
+FastBot bot(BOT_TOKEN);
 
 void setup() {
   connectWiFi();
 
-  bot.setToken(BOT_TOKEN);
   bot.attach(newMsg);
 }
 
@@ -23,7 +21,7 @@ void newMsg(FB_msg& msg) {
   Serial.print(msg.username);   // логин
   Serial.print(", ");
   Serial.println(msg.text);     // текст
-    
+
   // отправить сообщение обратно
   bot.sendMessage(msg.text, msg.chatID);  
 }

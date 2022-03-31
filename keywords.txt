@@ -39,6 +39,8 @@ setBufferSizes	KEYWORD2
 answer	KEYWORD2
 lastBotMsg	KEYWORD2
 lastUsrMsg	KEYWORD2
+setTextMode	KEYWORD2
+replyMessage	KEYWORD2
 
 ID	KEYWORD2
 usrID	KEYWORD2
@@ -54,3 +56,6 @@ FB_unicode	KEYWORD2
 # Constants (LITERAL1)
 #######################################
 FB_NO_UNICODE	LITERAL1
+FB_TEXT	LITERAL1
+FB_MARKDOWN	LITERAL1
+FB_HTML	LITERAL1

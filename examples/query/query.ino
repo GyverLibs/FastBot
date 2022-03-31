@@ -3,7 +3,7 @@
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
 #define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
-#define CHAT_ID "574578754"
+#define CHAT_ID "123456789"
 
 #include <FastBot.h>
 FastBot bot(BOT_TOKEN);
@@ -11,14 +11,14 @@ FastBot bot(BOT_TOKEN);
 void setup() {
   connectWiFi();
 
-  bot.setChatID(CHAT_ID);   // передай "" (пустую строку) чтобы отключить проверку
-  bot.attach(newMsg); // подключаем функцию-обработчик
-  String menu1 = "Menu 1 \t Menu 2 \t Menu 3 \n Back";
-  bot.inlineMenu("Menu 0", menu1);
+  bot.setChatID(CHAT_ID);
+  bot.attach(newMsg);
+  bot.inlineMenu("Menu 0", F("Menu 1 \t Menu 2 \t Menu 3 \n Back"));
 }
 
 void newMsg(FB_msg& msg) {
-  if (msg.query) bot.answer("Hello!", true);
+  if (msg.query) bot.answer("Hello!", true);  // предупреждение
+  //if (msg.query) bot.answer("Hello!");    // подсказка
 }
 
 void loop() {

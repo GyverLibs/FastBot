@@ -1,20 +1,18 @@
-[![Foo](https://img.shields.io/badge/Version-2.0-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.1-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
 # FastBot
-Очень простая и быстрая библиотека для телеграм бота
-- Оптимизирована для большой нагрузки (спокойно принимает 50 сообщ в секунду)
+Очень простая и быстрая библиотека для телеграм бота на esp8266/esp32
+- Работает на стандартных библиотеках
+- Работает без SSL
+- Оптимизирована для большой нагрузки
 - Опциональная установка ID чата для общения с ботом
 - Проверка обновлений вручную или по таймеру
-- Сообщения приходят в функцию-обработчик
-- Отправка сообщений в чат
+- Отправка/редактирование/ответ на сообщения
 - Вывод меню вместо клавиатуры
 - Вывод инлайн меню в сообщении
-- Возможность включить ручной инкремент новых сообщений
-- Работает без SSL
 - Поддержка Unicode (другие языки + эмодзи)
-- Работает на стандартных библиотеках
 
 ### Совместимость
 ESP8266, ESP32
@@ -59,17 +57,17 @@ FastBot bot(токен, лимит, порог, период);
 ## Документация
 ```cpp
 // ============== НАСТРОЙКИ ==============
-void setLimit(int limit);                       // макс кол-во сообщений на запрос
-void setOvf(int ovf);                           // макс кол-во символов
-void setPeriod(int period);                     // период опроса в мс (по умолч. 1000)
 void setToken(String token);                    // изменить/задать токен бота
+void setChatID(String chatID);                  // установка ID чата. Можно несколько через запятую ("id1,id2,id3")
+void setPeriod(int period);                     // период опроса в мс (по умолч. 1000)
+void setLimit(int limit);                       // макс кол-во сообщений на запрос
+void setOvf(int ovf);                           // макс кол-во символов на запрос (защита от флуда)
 void setBufferSizes(uint16_t rx, uint16_t tx);  // установить размеры буфера на приём и отправку, по умолч. 512 и 512 байт (только для esp8266)
-void setChatID(String chatID);                  // установка ID чата для парсинга сообщений. Можно несколько через запятую ("id1,id2,id3")
-    
+   
 
 // =============== ПАРСИНГ ===============
-void attach(void (*handler)(String&, String&)); // подключение обработчика сообщений
 void attach(void (*FB_msg)(msg&));              // подключение обработчика сообщений
+void attach(void (*handler)(String&, String&)); // подключение обработчика сообщений (устаревший)
 void detach();                                  // отключение ВСЕХ ОБРАБОТЧИКОВ СООБЩЕНИЙ
 
 
@@ -79,87 +77,78 @@ uint8_t tick();                                 // проверка обновл
 
 
 // ============== СООБЩЕНИЯ ===============
+uint8_t sendMessage(String msg);                // отправить сообщение в указанный в setChatID чат/чаты
+uint8_t sendMessage(String msg, String id);     // отправить сообщение в указанный здесь чат/чаты
+
+// ответить на сообщение с id (replyID) в указанный в setChatID чат ИЛИ указать чат
+uint8_t replyMessage(String msg, int32_t replyID);
+uint8_t replyMessage(String msg, int32_t replyID, String id);
+
+void answer(String text, bool alert = false);   // ответить на callback текстом (text) и режимом (alert) (true - предупреждение)
+void setTextMode(uint8_t mode);                 // режим обработки текста: FB_TEXT, FB_MARKDOWN, FB_HTML
+
 int32_t lastBotMsg();                           // ID последнего отправленного ботом сообщения
 int32_t lastUsrMsg();                           // ID последнего отправленного юзером сообщения
-uint8_t sendMessage(String msg);                // отправить сообщение в указанный в setChatID чат/чаты
-uint8_t sendMessage(String msg, String id);     // отправить сообщение в указанный здесь чат/чаты (через запятую)
-void answer(String text, bool alert = false);   // ответить на callback текстом и true - предупреждением
- 
- 
+
 // ============== УДАЛИТЬ ===============
-uint8_t deleteMessage(int offset);              // удалить сообщение со смещением offset в указанном в setChatID чате
-uint8_t deleteMessage(int offset, String id);   // удалить сообщение со смещением offset в указанном здесь чате
-uint8_t deleteMessageID(int32_t msgid);         // удалить сообщение id в указанном в setChatID чате
-uint8_t deleteMessageID(int32_t msgid, String id);  // удалить сообщение id в указанном чате
+uint8_t deleteMessage(int32_t offset);              // удалить сообщение со смещением (offset) в указанном в setChatID чате
+uint8_t deleteMessage(int32_t offset, String id);   // удалить сообщение со смещением (offset) в указанном здесь чате
+uint8_t deleteMessageID(int32_t msgid);             // удалить сообщение (msgid) в указанном в setChatID чате
+uint8_t deleteMessageID(int32_t msgid, String id);  // удалить сообщение (msgid) в указанном чате
 
 
 // ============ РЕДАКТИРОВАТЬ =============
-// редактировать сообщение со смещением offset в указанном в setChatID чате
+// редактировать сообщение со смещением (offset) в указанном в setChatID чате
 uint8_t editMessage(int32_t offset, String text);
 
-// редактировать сообщение со смещением offset в указанном чате
-uint8_t editMessage(int32_t offset, String text, String id);
-uint8_t editMessage(int32_t offset, String text, int32_t id);
-
-// редактировать сообщение id в указанном в setChatID чате
+// редактировать сообщение (msgid) в указанном в setChatID чате ИЛИ передать id чата
 uint8_t editMessageID(int32_t msgid, String text);
-
-// редактировать сообщение id в указанном чате
 uint8_t editMessageID(int32_t msgid, String text, String id);
-uint8_t editMessageID(int32_t msgid, String text, int32_t id);
    
 
 // ============= ОБЫЧНОЕ МЕНЮ =============
-uint8_t showMenu(String str);                   // показать меню (str) в указанном в setChatID чате
-uint8_t showMenu(String str, String id);        // показать меню в указанном здесь чате/чатах (через запятую)
-uint8_t closeMenu();                            // скрыть меню в указанном в setChatID чате
-uint8_t closeMenu(String id);                   // скрыть меню в указанном здесь чате/чатах (через запятую)
+// показать меню (menu) в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов 
+uint8_t showMenu(String menu);
+uint8_t showMenu(String menu, String id);
+
+// скрыть меню в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов 
+uint8_t closeMenu();
+uint8_t closeMenu(String id);
 
 
 // ======== ОБЫЧНОЕ МЕНЮ С ТЕКСТОМ =========
-// показать меню (str) в указанном в setChatID чате + сообщение (msg)
-uint8_t showMenuText(String msg, String str);
+// сообщение (msg) + показать меню (menu) в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов 
+uint8_t showMenuText(String msg, String menu);
+uint8_t showMenuText(String msg, String menu, String id);
 
-// показать меню (str) в указанном здесь чате/чатах (через запятую) + сообщение (msg)
-uint8_t showMenuText(String msg, String str, String id);
-
-// скрыть меню в указанном в setChatID чате + сообщение (msg)
+// сообщение (msg) + скрыть меню в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов 
 uint8_t closeMenuText(String msg);
-
-// скрыть меню в указанном здесь чате/чатах (через запятую) + сообщение (msg)
 uint8_t closeMenuText(String msg, String id);
 
 
 // ============= ИНЛАЙН МЕНЮ =============
-// показать инлайн меню (str) в указанном в setChatID чате + сообщение (msg)
-uint8_t inlineMenu(String msg, String str);
-
-// показать инлайн меню (str) в указанном здесь чате/чатах (через запятую) + сообщение (msg)
-uint8_t inlineMenu(String msg, String str, String id);
+// сообщение (msg) с инлайн меню (menu) в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов
+uint8_t inlineMenu(String msg, String menu);
+uint8_t inlineMenu(String msg, String menu, String id);
 
 
 // ======= ИНЛАЙН МЕНЮ С КОЛЛБЭКОМ =======
-// показать инлайн меню (str) с коллбэком (cbck) в указанном в setChatID чате + сообщение (msg)
-uint8_t inlineMenuCallback(String msg, String str, String cbck);
-
-// показать инлайн меню (str) с коллбэком (cbck) в указанном здесь чате/чатах (через запятую) + сообщение (msg)
-uint8_t inlineMenuCallback(String msg, String str, String cbck, String id);
+// сообщение (msg) с инлайн меню (menu) и коллбэком (cbck) в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов
+uint8_t inlineMenuCallback(String msg, String menu, String cbck);
+uint8_t inlineMenuCallback(String msg, String menu, String cbck, String id);
 
 
 // ======= РЕДАКТИРОВАТЬ ИНЛАЙН МЕНЮ С КОЛЛБЭКОМ =======
-// редактировать меню id в указанном в setChatID чате
-uint8_t editMenuID(int32_t msgid, String text, String cback);
-
-// редактировать меню id в указанном чате
-uint8_t editMenuID(int32_t msgid, String text, String cback, String id);
-uint8_t editMenuID(int32_t msgid, String text, String cback, int32_t id);
+// редактировать меню (msgid) текстом (menu) в указанном в setChatID чате ИЛИ передать id чата
+uint8_t editMenuID(int32_t msgid, String menu, String cback);
+uint8_t editMenuID(int32_t msgid, String menu, String cback, String id);
 
 
 // ================ СЕРВИС ===============
+uint8_t sendRequest(String& req);               // отправить запрос (начиная с /, например /sendMessage?...)
 void autoIncrement(boolean incr);               // авто инкремент сообщений (по умолч включен)
 void incrementID(uint8_t val);                  // вручную инкрементировать ID на val
 String chatIDs;                                 // указанная в setChatID строка, для отладки и редактирования списка
-uint8_t sendRequest(String& req);               // отправить запрос
 
 
 // =============== СТАТУС ================
@@ -193,10 +182,10 @@ uint8_t sendRequest(String& req);               // отправить запро
 - Эта функция будет автоматически вызвана при входящем сообщении, если ID чата совпадают или не настроены
 - Внутри этой функции можно пользоваться переданной переменной `сообщение`, которая имеет тип `FB_msg` (структура) и содержит в себе:
     - `int32_t ID` - ID сообщения
-    - `int32_t usrID` - ID юзера
+    - `String usrID` - ID юзера
     - `String first_name` - имя юзера
     - `String username` - ник юзера
-    - `int32_t chatID` - ID чата
+    - `String chatID` - ID чата
     - `String text` - текст сообщения
     - `bool query` - флаг запроса
 
@@ -308,6 +297,11 @@ void newMsg(FB_msg& msg) {
     - Добавил коллбэки в inlineMenu
     - Добавил ID юзера
     - Добавил редактирование сообщений и кучу всего
+
+- v2.1: 
+    - Ещё оптимизация
+    - Добавил форматирование текста (markdown, html)
+    - Добавил ответ на сообщение
 
 <a id="feedback"></a>
 ## Баги и обратная связь

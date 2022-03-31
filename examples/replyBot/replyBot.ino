@@ -1,8 +1,8 @@
-// бот меняет своё сообщение на отправленное в чат
+// бот отвечает на сообщения из любого чата
+
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
 #define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
-#define CHAT_ID "123456789"
 
 #include <FastBot.h>
 FastBot bot(BOT_TOKEN);
@@ -11,19 +11,19 @@ void setup() {
   connectWiFi();
 
   bot.attach(newMsg);
-  bot.setChatID(CHAT_ID);
-  bot.sendMessage("Edit me!");
 }
 
+// обработчик сообщений
 void newMsg(FB_msg& msg) {
+  // выводим ID чата, имя юзера и текст сообщения
   Serial.print(msg.chatID);     // ID чата 
   Serial.print(", ");
   Serial.print(msg.username);   // логин
   Serial.print(", ");
   Serial.println(msg.text);     // текст
 
-  // редактируем последнее сообщение от бота
-  bot.editMessageID(bot.lastBotMsg(), msg.text);
+  // ответить
+  bot.replyMessage("Hello!", msg.ID, msg.chatID);  
 }
 
 void loop() {

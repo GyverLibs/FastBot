@@ -7,7 +7,7 @@
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
 #define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
-#define CHAT_ID "574578754"
+#define CHAT_ID "123456789"
 
 #include <FastBot.h>
 FastBot bot(BOT_TOKEN);

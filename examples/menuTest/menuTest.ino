@@ -4,49 +4,52 @@
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
 #define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
-#define CHAT_ID "574578754"
+#define CHAT_ID "123456789"
 
 #include <FastBot.h>
 FastBot bot(BOT_TOKEN);
 
-String menu1 = "Menu 1 \t Menu 2 \t Menu 3 \n Back";
-String menu2 = "Answer 1.1 \t Answer 1.2 \t Answer 1.3 \n Back";
-String menu3 = "Answer 2.1 \t Answer 2.2 \t Answer 2.3 \n Back";
-String menu4 = "Answer 3.1 \t Answer 3.2 \t Answer 3.3 \n Back";
-byte depth = 0;
-
 void setup() {
   connectWiFi();
-  
-  bot.setChatID(CHAT_ID);   // передай "" (пустую строку) чтобы отключить проверку
-  bot.attach(newMsg); // подключаем функцию-обработчик
+
+  bot.setChatID(CHAT_ID);
+  bot.attach(newMsg);
+  String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
   bot.inlineMenu("Menu 0", menu1);
 }
 
-// создать свою функцию вида имя(String& ник, String& сообщение)
-void newMsg(String& name, String& msg) {
-  Serial.println(msg);
+byte depth = 0;
+void newMsg(FB_msg& msg) {
+  String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
+  String menu2 = F("Answer 1.1 \t Answer 1.2 \t Answer 1.3 \n Back");
+  String menu3 = F("Answer 2.1 \t Answer 2.2 \t Answer 2.3 \n Back");
+  String menu4 = F("Answer 3.1 \t Answer 3.2 \t Answer 3.3 \n Back");
+
+  // удаляем последнее сообщение от бота
   bot.deleteMessage(0);
-  if (msg == "Menu 1") {
+  
+  if (msg.text == "Menu 1") {
     bot.inlineMenu("Menu 1", menu2);
     depth = 1;
   }
-  if (msg == "Menu 2") {
+  if (msg.text == "Menu 2") {
     bot.inlineMenu("Menu 2", menu3);
     depth = 1;
   }
-  if (msg == "Menu 3") {
+  if (msg.text == "Menu 3") {
     bot.inlineMenu("Menu 3", menu4);
     depth = 1;
   }
-  if (msg == "Back" && depth == 1) {
+  if (msg.text == "Back" && depth == 1) {
     bot.inlineMenu("Menu 0", menu1);
     depth = 0;
   }
 
-  if (msg == "Show menu") {
+  if (msg.text == "Show menu") {
     bot.inlineMenu("Menu 0", menu1);
   }
+
+  Serial.println(msg.text);
 }
 
 void loop() {

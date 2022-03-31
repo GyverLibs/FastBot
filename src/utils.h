@@ -3,18 +3,41 @@
 void FB_unicode(String &uStr);
 
 struct FB_Parser {
-public:
-    FB_Parser(const String& str) : source(&str) {}
-    bool parse() {
-        if (to == (int)source -> length()) return 0;
-        to = source->indexOf(',', from);
-        if (to < 0) to = source -> length();
-        str = source -> substring(from, to);
-        str.trim();
-        from = to + 1;
+    FB_Parser() {
+      str.reserve(20);
+    }
+    
+    bool parseNT(const String& s) {
+      while (!end) {
+        char c1 = s[++i];
+        if (c1 == '\t' || c1 == '\n' || c1 == '\0') {
+          int to = i;
+          if (s[to - 1] == ' ') to--;
+          if (s[from] == ' ') from++;
+          str = s.substring(from, to);
+          from = i + 1;
+          end = (c1 == '\0');
+          div = c1;
+          return 1;
+        }
+      }
+      return 0;
+    }
+
+    bool parse(const String& s) {
+        if (i == (int)s.length()) return 0;
+        i = s.indexOf(',', from);
+        if (i < 0) i = s.length();
+        int to = i;
+        if (s[to - 1] == ' ') to--;
+        if (s[from] == ' ') from++;
+        str = s.substring(from, to);
+        from = i + 1;
         return 1;    
     }
-    int from = 0, to = 0;
-    const String* source;
+    
+    int i = 0, from = 0;
+    char div;
+    bool end = false;
     String str;
 };
