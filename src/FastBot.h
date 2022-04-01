@@ -375,7 +375,7 @@ public:
         }
         uint16_t endpos = req.length();
         FB_Parser ids;
-        uint8_t status;
+        uint8_t status = 5;
         while (ids.parse(id)) {
             req.remove(endpos);
             _addChatID(req, ids.str);
