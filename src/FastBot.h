@@ -219,7 +219,7 @@ public:
     // ===================== ОТПРАВКА =====================
     // отправить сообщение
     uint8_t sendMessage(const String& msg) {
-        return sendMessage(msg, chatIDs);
+        return replyMessage(msg, 0, chatIDs);
     }
 
     uint8_t sendMessage(const String& msg, const String& id) {
