@@ -495,7 +495,7 @@ private:
     }
     
     // ======================== PARSING =========================
-    bool find(const String& str, String& dest, int16_t& start, int16_t& end, String from, String to, int16_t len, int16_t pos) {
+    bool find(const String& str, String& dest, int16_t& start, int16_t& end, const String& from, const String& to, int16_t len, int16_t pos) {
         int strPos = str.indexOf(from, start);
         if (strPos < 0 || strPos > pos) return 0;
         start = strPos + len;
