@@ -52,9 +52,9 @@
         - Добавил ответ на сообщение
     
     v2.2: 
-        - оптимизация памяти
-        - добавил notify() - уведомления от сообщений бота
-        - добавил единоразовый показ клавиатуры
+        - Большая оптимизация памяти
+        - Добавил notify() - уведомления от сообщений бота
+        - Добавил единоразовый показ клавиатуры
 */
 
 /*
@@ -110,6 +110,7 @@ public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
     FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 1000) {
         _token.reserve(50);
+        chatIDs.reserve(10);
         _token = token;
         _ovf = ovf;
         _limit = limit;
@@ -221,10 +222,7 @@ public:
 
     uint8_t sendMessage(String msg, String id) {
         if (!id.length()) return 5;
-        if (id.indexOf(',') < 0) return _sendMessage(msg, id);
-        FB_Parser ids;
-        while (ids.parse(id)) _sendMessage(msg, ids.str);
-        return 6;
+        return _sendMessage(msg, id);
     }
     
     // ответить на сообщение
@@ -313,10 +311,7 @@ public:
     uint8_t showMenu(String str, String id, bool once = false) {
         String text(F("Show Menu"));
         if (!id.length()) return 5;
-        if (id.indexOf(',') < 0) return _showMenu(text, str, id, once);
-        FB_Parser ids;
-        while (ids.parse(id)) _showMenu(text, str, ids.str, once);
-        return 6;
+        return _showMenu(text, str, id, once);
     }
     
     // показать меню с текстом
@@ -326,10 +321,7 @@ public:
     
     uint8_t showMenuText(String text, String str, String id, bool once = false) {
         if (!id.length()) return 5;
-        if (id.indexOf(',') < 0) return _showMenu(text, str, id, once);
-        FB_Parser ids;
-        while (ids.parse(id)) _showMenu(text, str, ids.str, once);
-        return 6;
+        return _showMenu(text, str, id, once);
     }
     
     // закрыть меню
@@ -340,10 +332,7 @@ public:
     uint8_t closeMenu(String id) {
         String msg(F("Close Menu"));
         if (!id.length()) return 5;
-        if (id.indexOf(',') < 0) return _closeMenu(msg, id);
-        FB_Parser ids;
-        while (ids.parse(id)) _closeMenu(msg, ids.str);
-        return 6;
+        return _closeMenu(msg, id);
     }
     
     // закрыть меню с текстом
@@ -353,10 +342,7 @@ public:
     
     uint8_t closeMenuText(String msg, String id) {
         if (!id.length()) return 5;
-        if (id.indexOf(',') < 0) return _closeMenu(msg, id);
-        FB_Parser ids;
-        while (ids.parse(id)) _closeMenu(msg, ids.str);
-        return 6;
+        return _closeMenu(msg, id);
     }
     
     // показать инлайн меню
@@ -366,11 +352,8 @@ public:
     
     uint8_t inlineMenu(String msg, String str, String id) {
         if (!id.length()) return 5;
-        String cb;
-        if (id.indexOf(',') < 0) return _inlineMenu(msg, str, id, cb);
-        FB_Parser ids;
-        while (ids.parse(id)) _inlineMenu(msg, str, ids.str, cb);
-        return 6;
+        String cbck("");
+        return _inlineMenu(msg, str, id, cbck);
     }
     
     // показать инлайн меню с коллбэками
@@ -380,24 +363,36 @@ public:
     
     uint8_t inlineMenuCallback(String msg, String str, String cbacks, String id) {
         if (!id.length()) return 5;
-        if (id.indexOf(',') < 0) return _inlineMenu(msg, str, id, cbacks);
-        FB_Parser ids;
-        while (ids.parse(id)) _inlineMenu(msg, str, ids.str, cbacks);
-        return 6;
+        return _inlineMenu(msg, str, id, cbacks);
     }
     
     // ===================== ВСЯКОЕ =====================
     // отправить запрос
+    uint8_t sendRequest(String& req, String& id) {
+        if (id.indexOf(',') < 0) {
+            _addChatID(req, id);
+            return sendRequest(req);
+        }
+        uint16_t endpos = req.length();
+        FB_Parser ids;
+        uint8_t status;
+        while (ids.parse(id)) {
+            req.remove(endpos);
+            _addChatID(req, ids.str);
+            status = sendRequest(req);
+        }
+        return status;
+    }
+    
     uint8_t sendRequest(String& req) {
         uint8_t status = 1;
         if (_FB_httpReq.begin(_FB_client, req)) {
             if (_FB_httpReq.GET() != HTTP_CODE_OK) status = 3;
-            const String* str = &_FB_httpReq.getString();
-            int idx = str->indexOf("message_id");
-            if (idx > 0 && idx < (int)str->length()) {
-                int end = str->indexOf(",\"", idx);
-                _lastBotMsg = str->substring(idx + 12, end).toInt();
-            }
+            String msgID;
+            const String& answ = _FB_httpReq.getString();
+            int16_t st = 0, end;
+            find(answ, msgID, st, end, F("\"message_id\":"), F(",\""), 13, answ.length());
+            _lastBotMsg = msgID.toInt();
             _FB_httpReq.end();
         } else status = 4;
         return status;
@@ -422,17 +417,16 @@ private:
         s += F("https://api.telegram.org/bot");
         s += _token;
     }
-    void _addChatID(String& s, String& id) {
-        s += F("&chat_id=");
-        s += id;
-    }
     void _addMsgID(String& s, int32_t& id) {
         s += F("&message_id=");
         s += id;
     }
-    void _addMessage(String& req, String& id, String& text) {
+    void _addChatID(String& s, String& id) {
+        s += F("&chat_id=");
+        s += id;
+    }
+    void _addMessage(String& req, String& text) {
         req += F("/sendMessage?");
-        _addChatID(req, id);
         _addText(req, text);
         if (!notif) req += F("&disable_notification=true");
     }
@@ -448,10 +442,9 @@ private:
         req.reserve(75 + 25);
         _addToken(req);
         req += F("/editMessageReplyMarkup?");
-        _addChatID(req, id);
         _addMsgID(req, msgid);
         _addInlineMenu(req, str, cbck);
-        return sendRequest(req);
+        return sendRequest(req, id);
     }
     
     uint8_t _editMessage(int32_t msgid, String& text, String& id) {
@@ -459,10 +452,9 @@ private:
         req.reserve(75 + 20);
         _addToken(req);
         req += F("/editMessageText?");
-        _addChatID(req, id);
         _addMsgID(req, msgid);
         _addText(req, text);
-        return sendRequest(req);
+        return sendRequest(req, id);
     }
     
     uint8_t _deleteMessage(int32_t msgid, String& id) {
@@ -470,28 +462,27 @@ private:
         req.reserve(75 + 20);
         _addToken(req);
         req += F("/deleteMessage?");
-        _addChatID(req, id);
         _addMsgID(req, msgid);
-        return sendRequest(req);
+        return sendRequest(req, id);
     }
     
     uint8_t _sendMessage(String& text, String& id, int32_t replyID = 0) {
         String req;
         req.reserve(75 + 15);
         _addToken(req);
-        _addMessage(req, id, text);
+        _addMessage(req, text);
         if (replyID) {
             req += F("&reply_to_message_id=");
             req += replyID;
         }
-        return sendRequest(req);
+        return sendRequest(req, id);
     }
     
     uint8_t _showMenu(String& text, String& str, String& id, bool once) {
         String req;
         req.reserve(150 + str.length() + text.length());
         _addToken(req);
-        _addMessage(req, id, text);
+        _addMessage(req, text);
         req += F("&reply_markup={\"keyboard\":[[\"");
         FB_Parser t;
         while (t.parseNT(str)) {
@@ -502,25 +493,25 @@ private:
         req += F("\"]],\"resize_keyboard\":true");
         if (once) req += F(",\"one_time_keyboard\":true");
         req += '}';
-        return sendRequest(req);
+        return sendRequest(req, id);
     }
     
     uint8_t _closeMenu(String& text, String& id) {
         String req;
         req.reserve(75 + 50);
         _addToken(req);
-        _addMessage(req, id, text);
+        _addMessage(req, text);
         req += F("&reply_markup={\"remove_keyboard\":true}");
-        return sendRequest(req);
+        return sendRequest(req, id);
     }
     
     uint8_t _inlineMenu(String& text, String& str, String& id, String& cback) {
         String req;
         req.reserve(150 + str.length() + cback.length());
         _addToken(req);
-        _addMessage(req, id, text);
+        _addMessage(req, text);
         _addInlineMenu(req, str, cback);
-        return sendRequest(req);
+        return sendRequest(req, id);
     }
     
     void _addInlineMenu(String& req, String& str, String& cback) {
