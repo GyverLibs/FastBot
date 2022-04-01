@@ -55,6 +55,8 @@
         - Большая оптимизация памяти
         - Добавил notify() - уведомления от сообщений бота
         - Добавил единоразовый показ клавиатуры
+        
+    v2.3: Небольшая оптимизация
 */
 
 /*
@@ -181,7 +183,6 @@ public:
     uint8_t tickManual() {
         uint8_t status = 1;
         String req;
-        req.reserve(120);
         _addToken(req);
         req += F("/getUpdates?limit=");
         req += _limit;
@@ -215,160 +216,193 @@ public:
         return _lastUsrMsg;
     }
     
+    // ===================== ОТПРАВКА =====================
     // отправить сообщение
-    uint8_t sendMessage(String msg) {
+    uint8_t sendMessage(const String& msg) {
         return sendMessage(msg, chatIDs);
     }
 
-    uint8_t sendMessage(String msg, String id) {
-        if (!id.length()) return 5;
-        return _sendMessage(msg, id);
+    uint8_t sendMessage(const String& msg, const String& id) {
+        return replyMessage(msg, 0, id);
     }
     
     // ответить на сообщение
-    uint8_t replyMessage(String msg, int32_t replyID) {
+    uint8_t replyMessage(const String& msg, int32_t replyID) {
         return replyMessage(msg, replyID, chatIDs);
     }
 
-    uint8_t replyMessage(String msg, int32_t replyID, String id) {
+    uint8_t replyMessage(const String& msg, int32_t replyID, const String& id) {
         if (!id.length()) return 5;
-        return _sendMessage(msg, id, replyID);
+        String req;
+        _addToken(req);
+        _addMessage(req, msg);
+        if (replyID) {
+            req += F("&reply_to_message_id=");
+            req += replyID;
+        }
+        return sendRequest(req, id);
     }
     
     // ==================== УДАЛЕНИЕ =====================
     // удалить сообщение со смещением offset
     uint8_t deleteMessage(int32_t offset) {
-        return deleteMessage(offset, chatIDs);
+        return deleteMessageID(_lastUsrMsg - offset, chatIDs);
     }
     
-    uint8_t deleteMessage(int32_t offset, String id) {
-        if (!id.length()) return 5;
-        return _deleteMessage(_lastUsrMsg - offset, id);
+    uint8_t deleteMessage(int32_t offset, const String& id) {
+        return deleteMessageID(_lastUsrMsg - offset, id);
     }
     
     // удалить сообщение id
     uint8_t deleteMessageID(int32_t msgid) {
-        return deleteMessage(msgid, chatIDs);
+        return deleteMessageID(msgid, chatIDs);
     }
     
-    uint8_t deleteMessageID(int32_t msgid, String id) {
+    uint8_t deleteMessageID(int32_t msgid, const String& id) {
         if (!id.length()) return 5;
-        return _deleteMessage(msgid, id);
+        String req;
+        _addToken(req);
+        req += F("/deleteMessage?");
+        _addMsgID(req, msgid);
+        return sendRequest(req, id);
     }
     
     // ==================== РЕДАКТИРОВАНИЕ =====================
     // редактировать сообщение со смещением offset
-    uint8_t editMessage(int32_t offset, String text) {
-        return editMessage(offset, text, chatIDs);
+    uint8_t editMessage(int32_t offset, const String& text) {
+        return editMessageID(_lastUsrMsg - offset, text, chatIDs);
     }
     
-    uint8_t editMessage(int32_t offset, String text, String id) {
-        if (!id.length()) return 5;
-        return _editMessage(_lastUsrMsg - offset, text, id);
+    uint8_t editMessage(int32_t offset, const String& text, const String& id) {
+        return editMessageID(_lastUsrMsg - offset, text, id);
     }
     
     // редактировать сообщение id
-    uint8_t editMessageID(int32_t msgid, String text) {
+    uint8_t editMessageID(int32_t msgid, const String& text) {
         return editMessageID(msgid, text, chatIDs);
     }
-    
-    uint8_t editMessageID(int32_t msgid, String text, String id) {
+
+    uint8_t editMessageID(int32_t msgid, const String& text, const String& id) {
         if (!id.length()) return 5;
-        return _editMessage(msgid, text, id);
+        String req;
+        _addToken(req);
+        req += F("/editMessageText?");
+        _addMsgID(req, msgid);
+        _addText(req, text);
+        return sendRequest(req, id);
     }
     
     // ================ РЕДАКТИРОВАНИЕ ИНЛАЙН =================
     // редактировать меню id
-    uint8_t editMenuID(int32_t msgid, String text, String cback) {
-        return editMenuID(msgid, text, cback, chatIDs);
+    uint8_t editMenuID(int32_t msgid, const String& str, const String& cbck) {
+        return editMenuID(msgid, str, cbck, chatIDs);
     }
     
-    uint8_t editMenuID(int32_t msgid, String text, String cback, String id) {
+    uint8_t editMenuID(int32_t msgid, const String& str, const String& cbck, const String& id) {
         if (!id.length()) return 5;
-        return _editMenu(msgid, text, cback, id);
+        String req;
+        _addToken(req);
+        req += F("/editMessageReplyMarkup?");
+        _addMsgID(req, msgid);
+        _addInlineMenu(req, str, cbck);
+        return sendRequest(req, id);
     }
     
     // ответить на callback текстом и true - предупреждением
-    void answer(String text, bool alert = false) {
-        if (_query) {
-            String req;
-            req.reserve(75 + 40);
-            _addToken(req);
-            req += F("/answerCallbackQuery?callback_query_id=");
-            req += *_query;
-            _addText(req, text);
-            if (alert) req += F("&show_alert=true");
-            sendRequest(req);
-        }
+    uint8_t answer(const String& text, bool alert = false) {
+        if (!_query) return 5;
+        String req;
+        _addToken(req);
+        req += F("/answerCallbackQuery?callback_query_id=");
+        req += *_query;
+        _addText(req, text);
+        if (alert) req += F("&show_alert=true");
+        return sendRequest(req);
     }
     
     // ===================== МЕНЮ =====================
     // показать меню
-    uint8_t showMenu(String str, bool once = false) {
-        return showMenu(str, chatIDs, once);
+    uint8_t showMenu(const String& str, bool once = false) {
+        return showMenuText(F("Open Menu"), str, chatIDs, once);
     }
     
-    uint8_t showMenu(String str, String id, bool once = false) {
-        String text(F("Show Menu"));
-        if (!id.length()) return 5;
-        return _showMenu(text, str, id, once);
+    uint8_t showMenu(const String& str, const String& id, bool once = false) {
+        return showMenuText(F("Open Menu"), str, id, once);
     }
     
     // показать меню с текстом
-    uint8_t showMenuText(String text, String str, bool once = false) {
-        return showMenuText(str, text, chatIDs, once);
+    uint8_t showMenuText(const String& msg, const String& str, bool once = false) {
+        return showMenuText(msg, str, chatIDs, once);
     }
     
-    uint8_t showMenuText(String text, String str, String id, bool once = false) {
+    uint8_t showMenuText(const String& msg, const String& str, const String& id, bool once = false) {
         if (!id.length()) return 5;
-        return _showMenu(text, str, id, once);
+        String req;
+        _addToken(req);
+        _addMessage(req, msg);
+        req += F("&reply_markup={\"keyboard\":[[\"");
+        FB_Parser t;
+        while (t.parseNT(str)) {
+            req += t.str;
+            if (t.div == '\t') req += F("\",\"");
+            else if (t.div == '\n') req += F("\"],[\"");
+        }
+        req += F("\"]],\"resize_keyboard\":true");
+        if (once) req += F(",\"one_time_keyboard\":true");
+        req += '}';
+        return sendRequest(req, id);
     }
     
     // закрыть меню
     uint8_t closeMenu() {
-        return closeMenu(chatIDs);
+        return closeMenuText(F("Close Menu"), chatIDs);
     }
     
-    uint8_t closeMenu(String id) {
-        String msg(F("Close Menu"));
-        if (!id.length()) return 5;
-        return _closeMenu(msg, id);
+    uint8_t closeMenu(const String& id) {
+        return closeMenuText(F("Close Menu"), id);
     }
     
     // закрыть меню с текстом
-    uint8_t closeMenuText(String msg) {
+    uint8_t closeMenuText(const String& msg) {
         return closeMenuText(msg, chatIDs);
     }
     
-    uint8_t closeMenuText(String msg, String id) {
+    uint8_t closeMenuText(const String& msg, const String& id) {
         if (!id.length()) return 5;
-        return _closeMenu(msg, id);
+        String req;
+        _addToken(req);
+        _addMessage(req, msg);
+        req += F("&reply_markup={\"remove_keyboard\":true}");
+        return sendRequest(req, id);
     }
     
+    // =================== ИНЛАЙН МЕНЮ ===================
     // показать инлайн меню
-    uint8_t inlineMenu(String msg, String str) {
-        return inlineMenu(msg, str, chatIDs);
+    uint8_t inlineMenu(const String& msg, const String& str) {
+        return inlineMenuCallback(msg, str, "", chatIDs);
     }
     
-    uint8_t inlineMenu(String msg, String str, String id) {
-        if (!id.length()) return 5;
-        String cbck("");
-        return _inlineMenu(msg, str, id, cbck);
+    uint8_t inlineMenu(const String& msg, const String& str, const String& id) {
+        return inlineMenuCallback(msg, str, "", id);
     }
     
     // показать инлайн меню с коллбэками
-    uint8_t inlineMenuCallback(String msg, String str, String cbacks) {
-        return inlineMenuCallback(msg, str, cbacks, chatIDs);
+    uint8_t inlineMenuCallback(const String& msg, const String& str, const String& cbck) {
+        return inlineMenuCallback(msg, str, cbck, chatIDs);
     }
     
-    uint8_t inlineMenuCallback(String msg, String str, String cbacks, String id) {
+    uint8_t inlineMenuCallback(const String& msg, const String& str, const String& cbck, const String& id) {
         if (!id.length()) return 5;
-        return _inlineMenu(msg, str, id, cbacks);
+        String req;
+        _addToken(req);
+        _addMessage(req, msg);
+        _addInlineMenu(req, str, cbck);
+        return sendRequest(req, id);
     }
     
     // ===================== ВСЯКОЕ =====================
     // отправить запрос
-    uint8_t sendRequest(String& req, String& id) {
+    uint8_t sendRequest(String& req, const String& id) {
         if (id.indexOf(',') < 0) {
             _addChatID(req, id);
             return sendRequest(req);
@@ -410,116 +444,40 @@ public:
     
     // для непосредственного редактирования
     String chatIDs;
-    
+
 private:
     // ================ BUILDER ===============
     void _addToken(String& s) {
+        s.reserve(150);
         s += F("https://api.telegram.org/bot");
         s += _token;
     }
-    void _addMsgID(String& s, int32_t& id) {
+    void _addMsgID(String& s, const int32_t& id) {
         s += F("&message_id=");
         s += id;
     }
-    void _addChatID(String& s, String& id) {
+    void _addChatID(String& s, const String& id) {
         s += F("&chat_id=");
         s += id;
     }
-    void _addMessage(String& req, String& text) {
+    void _addMessage(String& req, const String& text) {
         req += F("/sendMessage?");
         _addText(req, text);
         if (!notif) req += F("&disable_notification=true");
     }
-    void _addText(String& s, String& text) {
+    void _addText(String& s, const String& text) {
         s += F("&text=");
         s += text;
         if (parseMode == FB_MARKDOWN) s += F("&parse_mode=MarkdownV2");
         else if (parseMode == FB_HTML) s += F("&parse_mode=HTML");
     }
     
-    uint8_t _editMenu(int32_t msgid, String& str, String& cbck, String& id) {
-        String req;
-        req.reserve(75 + 25);
-        _addToken(req);
-        req += F("/editMessageReplyMarkup?");
-        _addMsgID(req, msgid);
-        _addInlineMenu(req, str, cbck);
-        return sendRequest(req, id);
-    }
-    
-    uint8_t _editMessage(int32_t msgid, String& text, String& id) {
-        String req;
-        req.reserve(75 + 20);
-        _addToken(req);
-        req += F("/editMessageText?");
-        _addMsgID(req, msgid);
-        _addText(req, text);
-        return sendRequest(req, id);
-    }
-    
-    uint8_t _deleteMessage(int32_t msgid, String& id) {
-        String req;
-        req.reserve(75 + 20);
-        _addToken(req);
-        req += F("/deleteMessage?");
-        _addMsgID(req, msgid);
-        return sendRequest(req, id);
-    }
-    
-    uint8_t _sendMessage(String& text, String& id, int32_t replyID = 0) {
-        String req;
-        req.reserve(75 + 15);
-        _addToken(req);
-        _addMessage(req, text);
-        if (replyID) {
-            req += F("&reply_to_message_id=");
-            req += replyID;
-        }
-        return sendRequest(req, id);
-    }
-    
-    uint8_t _showMenu(String& text, String& str, String& id, bool once) {
-        String req;
-        req.reserve(150 + str.length() + text.length());
-        _addToken(req);
-        _addMessage(req, text);
-        req += F("&reply_markup={\"keyboard\":[[\"");
-        FB_Parser t;
-        while (t.parseNT(str)) {
-            req += t.str;
-            if (t.div == '\t') req += F("\",\"");
-            else if (t.div == '\n') req += F("\"],[\"");
-        }
-        req += F("\"]],\"resize_keyboard\":true");
-        if (once) req += F(",\"one_time_keyboard\":true");
-        req += '}';
-        return sendRequest(req, id);
-    }
-    
-    uint8_t _closeMenu(String& text, String& id) {
-        String req;
-        req.reserve(75 + 50);
-        _addToken(req);
-        _addMessage(req, text);
-        req += F("&reply_markup={\"remove_keyboard\":true}");
-        return sendRequest(req, id);
-    }
-    
-    uint8_t _inlineMenu(String& text, String& str, String& id, String& cback) {
-        String req;
-        req.reserve(150 + str.length() + cback.length());
-        _addToken(req);
-        _addMessage(req, text);
-        _addInlineMenu(req, str, cback);
-        return sendRequest(req, id);
-    }
-    
-    void _addInlineMenu(String& req, String& str, String& cback) {
+    void _addInlineMenu(String& req, const String& str, const String& cbck) {
         req += F("&reply_markup={\"inline_keyboard\":[[{");
         FB_Parser t, cb;
         while (t.parseNT(str)) {
-            if (cback.length() > 0) {
-                cb.parse(cback);
+            if (cbck.length() > 0) {
+                cb.parse(cbck);
                 _addInlineButton(req, t.str, cb.str);
             } else _addInlineButton(req, t.str, t.str);
             if (t.div == '\t') req += F("},{");
@@ -528,11 +486,11 @@ private:
         req += F("}]]}");
     }
     
-    void _addInlineButton(String& str, String& text, String& cback) {
+    void _addInlineButton(String& str, const String& text, const String& cbck) {
         str += F("\"text\":\"");
         str += text;
         str += F("\",\"callback_data\":\"");
-        str += cback;
+        str += cbck;
         str += '\"';
     }
     
@@ -606,6 +564,7 @@ private:
                 if (*_callback2) _callback2(message);
                 if (*_callback) _callback(username, text);
                 _query = nullptr;
+                yield();
             } else break;   // IDpos > 0
         }
         if (_incr) ID += counter;

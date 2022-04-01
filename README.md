@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.2-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.3-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -97,42 +97,51 @@ uint8_t tick();                                 // проверка обновл
 
 
 // ============== СООБЩЕНИЯ ===============
-uint8_t sendMessage(String msg);                // отправить сообщение в указанный в setChatID чат/чаты
-uint8_t sendMessage(String msg, String id);     // отправить сообщение в указанный здесь чат/чаты
+// отправить сообщение в указанный в setChatID чат/чаты ИЛИ передать id чата
+uint8_t sendMessage(String msg);
+uint8_t sendMessage(String msg, String id);
 
 // ответить на сообщение с id (replyID) в указанный в setChatID чат ИЛИ указать чат
 uint8_t replyMessage(String msg, int32_t replyID);
 uint8_t replyMessage(String msg, int32_t replyID, String id);
 
-void answer(String text, bool alert = false);   // ответить на callback текстом (text) и режимом (alert) (true - предупреждение)
+
+// ============== СООБЩЕНИЯ ===============
+// ответить на callback текстом (text) и режимом (alert) (true - предупреждение)
+uint8_t answer(String text, bool alert = false);
+
 void setTextMode(uint8_t mode);                 // режим обработки текста: FB_TEXT, FB_MARKDOWN, FB_HTML
 void notify(bool mode);                         // true/false вкл/выкл уведомления от сообщений бота (по умолч. вкл)
 
 int32_t lastBotMsg();                           // ID последнего отправленного ботом сообщения
 int32_t lastUsrMsg();                           // ID последнего отправленного юзером сообщения
 
+
 // ============== УДАЛИТЬ ===============
-uint8_t deleteMessage(int32_t offset);              // удалить сообщение со смещением (offset) в указанном в setChatID чате
-uint8_t deleteMessage(int32_t offset, String id);   // удалить сообщение со смещением (offset) в указанном здесь чате
-uint8_t deleteMessageID(int32_t msgid);             // удалить сообщение (msgid) в указанном в setChatID чате
-uint8_t deleteMessageID(int32_t msgid, String id);  // удалить сообщение (msgid) в указанном чате
+// удалить сообщение со смещением от последнего (offset) в указанном в setChatID чате ИЛИ передать id чата
+uint8_t deleteMessage(int32_t offset);
+uint8_t deleteMessage(int32_t offset, String id);
+
+// удалить сообщение с id (msgid) в указанном в setChatID чате ИЛИ передать id чата
+uint8_t deleteMessageID(int32_t msgid);
+uint8_t deleteMessageID(int32_t msgid, String id);
 
 
 // ============ РЕДАКТИРОВАТЬ =============
-// редактировать сообщение со смещением (offset) в указанном в setChatID чате
+// редактировать сообщение со смещением от последнего (offset) в указанном в setChatID чате
 uint8_t editMessage(int32_t offset, String text);
 
 // редактировать сообщение (msgid) в указанном в setChatID чате ИЛИ передать id чата
 uint8_t editMessageID(int32_t msgid, String text);
 uint8_t editMessageID(int32_t msgid, String text, String id);
-   
+
 
 // ============= ОБЫЧНОЕ МЕНЮ =============
 // показать меню (menu) в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов 
 uint8_t showMenu(String menu);
 uint8_t showMenu(String menu, String id);
 
-// единоразовое меню (закроется при выборе)
+// единоразовое меню (закроется при выборе) в текущем чате ИЛИ передать id чата
 uint8_t showMenu(String menu, true);
 uint8_t showMenu(String menu, String id, true);
 
@@ -311,12 +320,14 @@ void newMsg(FB_msg& msg) {
 - v1.5.1 - получаем также ID сообщения
 - v1.6 - добавлен режим FB_DYNAMIC_HTTP, чтение имени пользователя
 - v1.7:
+
   - Убрал динамический режим FB_DYNAMIC_HTTP, работает слишком медленно
   - Исправил warningи
   - Починил работу бота в "группах" (отрицательный ID чата)
   - Оптимизация памяти
   - Ускорил работу
   - Пофиксил работу через раз в сценарии "эхо"
+  
 - v2.0:
     - Убрал минимум в 3200 мс
     - Добавил обработку Юникода (русский язык, эмодзи). Спасибо Глебу Жукову!
@@ -332,9 +343,12 @@ void newMsg(FB_msg& msg) {
     - Добавил форматирование текста (markdown, html)
     - Добавил ответ на сообщение
 - v2.2:
+
     - Большая оптимизация памяти и производительности
     - Добавил notify() - уведомления от сообщений бота
     - Добавил единоразовый показ клавиатуры
+    
+- v2.3: Небольшая оптимизация
 
 <a id="feedback"></a>
 ## Баги и обратная связь
