@@ -7,6 +7,9 @@
 #######################################
 FastBot	KEYWORD1
 
+FB_NO_UNICODE	LITERAL1
+FB_NO_URLENCODE	LITERAL1
+
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
@@ -56,7 +59,6 @@ FB_unicode	KEYWORD2
 #######################################
 # Constants (LITERAL1)
 #######################################
-FB_NO_UNICODE	LITERAL1
 FB_TEXT	LITERAL1
 FB_MARKDOWN	LITERAL1
 FB_HTML	LITERAL1

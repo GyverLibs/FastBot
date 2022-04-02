@@ -57,6 +57,7 @@
         - Добавил единоразовый показ клавиатуры
         
     v2.3: Небольшая оптимизация
+    v2.4: Добавил url encode для текста сообщений
 */
 
 /*
@@ -233,9 +234,17 @@ public:
 
     uint8_t replyMessage(const String& msg, int32_t replyID, const String& id) {
         if (!id.length()) return 5;
+        #ifndef FB_NO_URLENCODE
+        String umsg;
+        FB_urlencode(msg, umsg);
+        #endif
         String req;
         _addToken(req);
+        #ifndef FB_NO_URLENCODE
+        _addMessage(req, umsg);
+        #else
         _addMessage(req, msg);
+        #endif
         if (replyID) {
             req += F("&reply_to_message_id=");
             req += replyID;
@@ -284,11 +293,19 @@ public:
 
     uint8_t editMessageID(int32_t msgid, const String& text, const String& id) {
         if (!id.length()) return 5;
+        #ifndef FB_NO_URLENCODE
+        String utext;
+        FB_urlencode(text, utext);
+        #endif
         String req;
         _addToken(req);
         req += F("/editMessageText?");
         _addMsgID(req, msgid);
+        #ifndef FB_NO_URLENCODE
+        _addText(req, utext);
+        #else
         _addText(req, text);
+        #endif
         return sendRequest(req, id);
     }
     
@@ -311,11 +328,19 @@ public:
     // ответить на callback текстом и true - предупреждением
     uint8_t answer(const String& text, bool alert = false) {
         if (!_query) return 5;
+        #ifndef FB_NO_URLENCODE
+        String utext;
+        FB_urlencode(text, utext);
+        #endif
         String req;
         _addToken(req);
         req += F("/answerCallbackQuery?callback_query_id=");
         req += *_query;
+        #ifndef FB_NO_URLENCODE
+        _addText(req, utext);
+        #else
         _addText(req, text);
+        #endif
         if (alert) req += F("&show_alert=true");
         return sendRequest(req);
     }
@@ -337,9 +362,17 @@ public:
     
     uint8_t showMenuText(const String& msg, const String& str, const String& id, bool once = false) {
         if (!id.length()) return 5;
+        #ifndef FB_NO_URLENCODE
+        String umsg;
+        FB_urlencode(msg, umsg);
+        #endif
         String req;
         _addToken(req);
+        #ifndef FB_NO_URLENCODE
+        _addMessage(req, umsg);
+        #else
         _addMessage(req, msg);
+        #endif
         req += F("&reply_markup={\"keyboard\":[[\"");
         FB_Parser t;
         while (t.parseNT(str)) {
@@ -369,9 +402,17 @@ public:
     
     uint8_t closeMenuText(const String& msg, const String& id) {
         if (!id.length()) return 5;
+        #ifndef FB_NO_URLENCODE
+        String umsg;
+        FB_urlencode(msg, umsg);
+        #endif
         String req;
         _addToken(req);
+        #ifndef FB_NO_URLENCODE
+        _addMessage(req, umsg);
+        #else
         _addMessage(req, msg);
+        #endif
         req += F("&reply_markup={\"remove_keyboard\":true}");
         return sendRequest(req, id);
     }
@@ -393,9 +434,17 @@ public:
     
     uint8_t inlineMenuCallback(const String& msg, const String& str, const String& cbck, const String& id) {
         if (!id.length()) return 5;
+        #ifndef FB_NO_URLENCODE
+        String umsg;
+        FB_urlencode(msg, umsg);
+        #endif
         String req;
         _addToken(req);
+        #ifndef FB_NO_URLENCODE
+        _addMessage(req, umsg);
+        #else
         _addMessage(req, msg);
+        #endif
         _addInlineMenu(req, str, cbck);
         return sendRequest(req, id);
     }

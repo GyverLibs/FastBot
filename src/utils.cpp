@@ -1,4 +1,20 @@
 #include "utils.h"
+
+void FB_urlencode(const String& s, String& dest) {
+    dest.reserve(s.length() + 10);
+    char c;
+    for (uint16_t i = 0; i < s.length(); i++) {
+        c = s[i];
+        if (c == ' ') dest += '+';
+        else if (c < 38 || c == '+') {
+            dest += '%';
+            dest += (char)((c >> 4) + (((c >> 4) > 9) ? 87 : 48));
+            dest += (char)((c & 0xF) + (((c & 0xF) > 9) ? 87 : 48));
+        }
+        else dest += c;
+    }
+}
+
 // разработано Глебом Жуковым, допилено AlexGyver
 // https://vk.com/wall-97877471_783011
 void FB_unicode(String &uStr) {

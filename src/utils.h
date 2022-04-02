@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 void FB_unicode(String &uStr);
+void FB_urlencode(const String& s, String& dest);
 
 struct FB_Parser {
     FB_Parser() {

@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.3-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.4-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -12,7 +12,8 @@
 - Отправка/редактирование/ответ на сообщения
 - Вывод меню вместо клавиатуры
 - Вывод инлайн меню в сообщении
-- Поддержка Unicode (другие языки + эмодзи)
+- Поддержка Unicode (другие языки + эмодзи) для входящих сообщений
+- Встроенный urlencode для исходящих сообщений
 
 ### Совместимость
 ESP8266, ESP32
@@ -201,7 +202,9 @@ String chatIDs;                                 // указанная в setChat
 
 
 // ========== ДЕФАЙНЫ НАСТРОЕК ==========
-#define FB_NO_UNICODE   // отключить конвертацию Unicode
+// объявлять ПЕРЕД подключением библиотеки
+#define FB_NO_UNICODE   // отключить конвертацию Unicode для входящих сообщений (чуть ускорит программу)
+#define FB_NO_URLENCODE // отключить конвертацию urlencode для исходящих сообщений (чуть ускорит программу)
 ```
 
 <a id="usage"></a>
@@ -271,6 +274,7 @@ void loop() {
 showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4");
 ```
 Нажатие на кнопку **отправляет текст с кнопки**.
+> Примечание: для всех вариантов меню *не производится* url encode. Избегайте символов `" % & + \`!
 
 ### Инлайн меню
 Меню в сообщении. Требует ввода имени меню:
@@ -349,6 +353,7 @@ void newMsg(FB_msg& msg) {
     - Добавил единоразовый показ клавиатуры
     
 - v2.3: Небольшая оптимизация
+- v2.4: Добавил url encode для текста сообщений
 
 <a id="feedback"></a>
 ## Баги и обратная связь
