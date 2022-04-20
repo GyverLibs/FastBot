@@ -54,6 +54,8 @@ username	KEYWORD2
 chatID	KEYWORD2
 text	KEYWORD2
 query	KEYWORD2
+edited	KEYWORD2
+bot	KEYWORD2
 
 FB_unicode	KEYWORD2
 

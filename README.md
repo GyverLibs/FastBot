@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.4-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.5-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -229,6 +229,8 @@ String chatIDs;                                 // указанная в setChat
     - `String chatID` - ID чата
     - `String text` - текст сообщения
     - `bool query` - флаг запроса
+    - `bool edited` - сообщение отредактировано
+    - `bool bot` - сообщение от бота
 
 ### Минимальный пример
 ```cpp
@@ -347,13 +349,13 @@ void newMsg(FB_msg& msg) {
     - Добавил форматирование текста (markdown, html)
     - Добавил ответ на сообщение
 - v2.2:
-
     - Большая оптимизация памяти и производительности
     - Добавил notify() - уведомления от сообщений бота
     - Добавил единоразовый показ клавиатуры
     
 - v2.3: Небольшая оптимизация
 - v2.4: Добавил url encode для текста сообщений
+- v2.5: Добавил флаги в FB_msg: сообщение отредактировано и сообщение отправлено ботом. Улучшил парсинг текста
 
 <a id="feedback"></a>
 ## Баги и обратная связь

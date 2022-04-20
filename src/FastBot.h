@@ -58,6 +58,7 @@
         
     v2.3: Небольшая оптимизация
     v2.4: Добавил url encode для текста сообщений
+    v2.5: Добавил флаги в FB_msg: сообщение отредактировано и сообщение отправлено ботом. Улучшил парсинг текста
 */
 
 /*
@@ -105,6 +106,8 @@ struct FB_msg {
     String& chatID;     // ID чата
     String& text;       // текст
     bool query;         // запрос
+    bool edited;        // сообщение отредактировано
+    bool bot;           // сообщение от бота
 };
 
 // ================================
@@ -548,10 +551,20 @@ private:
         int strPos = str.indexOf(from, start);
         if (strPos < 0 || strPos > pos) return 0;
         start = strPos + len;
-        end = str.indexOf(to, start);
+        end = start;
+        while (1) {
+            end = str.indexOf(to, end);
+            if (str[end - 1] != '\\') break;
+            end++;
+        }
         dest = str.substring(start, end);
         start = end;
         return 1;
+    }
+    
+    bool find(const String& str, const String& text, int16_t start, int16_t end) {
+        int16_t strPos = str.indexOf(text, start);
+        return (strPos > 0) && (strPos < end);
     }
 
     uint8_t parse(const String& str, uint16_t size) {
@@ -578,6 +591,8 @@ private:
                 find(str, query, textPos, endPos, F("query\":{\"id\":\""), F(",\""), 14, IDpos);
                 _query = &query;
                 
+                bool edited = find(str, F("\"edited_message\":"), textPos, IDpos);
+                
                 String message_id;
                 if (!find(str, message_id, textPos, endPos, F("\"message_id\":"), F(",\""), 13, IDpos)) continue;
                 _lastUsrMsg = message_id.toInt();
@@ -585,22 +600,24 @@ private:
                 String usrID;
                 if (!find(str, usrID, textPos, endPos, F("\"id\":"), F(",\""), 5, IDpos)) continue;
                 
+                bool is_bot = find(str, F("\"is_bot\":true"), textPos, IDpos);
+                
                 String first_name;
-                find(str, first_name, textPos, endPos, F("\"first_name\":\""), F("\""), 14, IDpos);
+                find(str, first_name, textPos, endPos, F("\"first_name\":\""), F("\",\""), 14, IDpos);
 
                 String username;
-                find(str, username, textPos, endPos, F("\"username\":\""), F("\""), 12, IDpos);
+                find(str, username, textPos, endPos, F("\"username\":\""), F("\",\""), 12, IDpos);
                 
                 String chatID;
                 if (!find(str, chatID, textPos, endPos, F("\"chat\":{\"id\":"), F(",\""), 13, IDpos)) continue;
                 if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;  // проверка на ID чата
                 
                 String text;
-                int dataPos = str.indexOf(F("\"data\":\""), textPos);
-                if (dataPos < 0 || dataPos > IDpos) {
-                    if (!find(str, text, textPos, endPos, F("\"text\":\""), F("\""), 8, IDpos)) continue;
-                } else {
+                bool data = find(str, F("\"data\":\""), textPos, IDpos);
+                if (data) {
                     find(str, text, textPos, endPos, F("\"data\":\""), F("\""), 8, IDpos);
+                } else {
+                    if (!find(str, text, textPos, endPos, F("\"text\":\""), F("\""), 8, IDpos)) continue;
                 }
 
                 #ifndef FB_NO_UNICODE
@@ -609,7 +626,7 @@ private:
                 FB_unicode(text);
                 #endif
 
-                FB_msg message = (FB_msg){_lastUsrMsg, usrID, first_name, username, chatID, text, (query.length() > 0)};
+                FB_msg message = (FB_msg){_lastUsrMsg, usrID, first_name, username, chatID, text, (query.length() > 0), edited, is_bot};
                 if (*_callback2) _callback2(message);
                 if (*_callback) _callback(username, text);
                 _query = nullptr;

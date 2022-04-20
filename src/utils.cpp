@@ -26,8 +26,10 @@ void FB_unicode(String &uStr) {
         if (uStr[i] != '\\') out += uStr[i];
         else {
             switch (uStr[++i]) {
-            case '/': out += uStr[i]; break;
+            case '0': break;
             case 'n': out += '\n'; break;
+            case 'r': out += '\r'; break;
+            case 't': out += '\t'; break;
             case 'u':
                 uBytes = strtol(uStr.c_str() + i + 1, NULL, HEX);
                 i += 4;
@@ -53,6 +55,7 @@ void FB_unicode(String &uStr) {
                     out += (char)(0b10000000 | (uBytes & 0b111111));
                 }
                 break;
+                default: out += uStr[i]; break;
             }
         }
     }
