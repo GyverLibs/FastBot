@@ -3,6 +3,16 @@
 void FB_unicode(String &uStr);
 void FB_urlencode(const String& s, String& dest);
 
+struct FB_Time {
+    uint8_t second = 0;
+    uint8_t minute = 0;
+    uint8_t hour = 0;
+    uint8_t day = 0;
+    uint8_t month = 0;
+    uint8_t dayWeek = 0;
+    uint16_t year = 0;
+};
+
 struct FB_Parser {
     FB_Parser() {
       str.reserve(20);

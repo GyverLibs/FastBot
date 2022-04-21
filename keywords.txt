@@ -7,6 +7,7 @@
 #######################################
 FastBot	KEYWORD1
 
+FB_Time	LITERAL1
 FB_NO_UNICODE	LITERAL1
 FB_NO_URLENCODE	LITERAL1
 
@@ -47,6 +48,10 @@ setTextMode	KEYWORD2
 replyMessage	KEYWORD2
 notify	KEYWORD2
 
+timeSynced	KEYWORD2
+getTime	KEYWORD2
+getUnix	KEYWORD2
+
 ID	KEYWORD2
 usrID	KEYWORD2
 first_name	KEYWORD2
@@ -55,7 +60,15 @@ chatID	KEYWORD2
 text	KEYWORD2
 query	KEYWORD2
 edited	KEYWORD2
-bot	KEYWORD2
+isBot	KEYWORD2
+
+second	KEYWORD2
+minute	KEYWORD2
+hour	KEYWORD2
+day	KEYWORD2
+month	KEYWORD2
+dayWeek	KEYWORD2
+year	KEYWORD2
 
 FB_unicode	KEYWORD2
 

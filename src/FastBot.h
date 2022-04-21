@@ -59,6 +59,7 @@
     v2.3: Небольшая оптимизация
     v2.4: Добавил url encode для текста сообщений
     v2.5: Добавил флаги в FB_msg: сообщение отредактировано и сообщение отправлено ботом. Улучшил парсинг текста
+    v2.6: Добавил встроенные часы реального времени
 */
 
 /*
@@ -107,14 +108,14 @@ struct FB_msg {
     String& text;       // текст
     bool query;         // запрос
     bool edited;        // сообщение отредактировано
-    bool bot;           // сообщение от бота
+    bool isBot;         // сообщение от бота
 };
 
 // ================================
 class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
-    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 1000) {
+    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 3500) {
         _token.reserve(50);
         chatIDs.reserve(10);
         _token = token;
@@ -184,7 +185,7 @@ public:
     
     // ===================== ТИКЕР =====================
     // ручная проверка обновлений
-    uint8_t tickManual() {
+    uint8_t tickManual() {uint32_t ms = millis();
         uint8_t status = 1;
         String req;
         _addToken(req);
@@ -196,7 +197,7 @@ public:
             if (_FB_httpGet.GET() == HTTP_CODE_OK) status = parse(_FB_httpGet.getString(), _FB_httpGet.getSize());
             else status = 3;
             _FB_httpGet.end();
-        } else status = 4;
+        } else status = 4;Serial.println(millis() - ms);
         return status;
     }
     
@@ -479,6 +480,11 @@ public:
             int16_t st = 0, end;
             find(answ, msgID, st, end, F("\"message_id\":"), F(",\""), 13, answ.length());
             _lastBotMsg = msgID.toInt();
+            String date;
+            if (find(answ, date, st, end, F("\"date\":"), F(","), 7, answ.length())) {
+                _unix = date.toInt();
+                _lastUpd = millis();
+            }
             _FB_httpReq.end();
         } else status = 4;
         return status;
@@ -496,6 +502,43 @@ public:
     
     // для непосредственного редактирования
     String chatIDs;
+    
+    // ===================== ВРЕМЯ =====================
+    // получить текущее unix время
+    uint32_t getUnix() {
+        return _unix ? (_unix + (millis() - _lastUpd) / 1000ul) : 0;
+    }
+    
+    // получить текущее время, указать часовой пояс
+    FB_Time getTime(int8_t gmt) {
+        FB_Time t;
+        if (!_unix) return t;
+        uint32_t u = getUnix() + gmt * 3600ul;
+        t.second = u % 60ul;
+        u /= 60ul;
+        t.minute = u % 60ul;
+        u /= 60ul;
+        t.hour = u % 24ul;
+        u /= 24ul;
+        t.dayWeek = (u + 4) % 7;
+        if (!t.dayWeek) t.dayWeek = 7;
+        u += 719468;
+        uint8_t era = u / 146097ul;
+        uint16_t doe = u - era * 146097ul;
+        uint16_t yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        t.year = yoe + era * 400;
+        uint16_t doy = doe - (yoe * 365 + yoe / 4 - yoe / 100);
+        uint16_t mp = (doy * 5 + 2) / 153;
+        t.day = doy - (mp * 153 + 2) / 5 + 1;
+        t.month = mp + (mp < 10 ? 3 : -9);
+        t.year += (t.month <= 2);
+        return t;
+    }
+    
+    // проверка, синхронизировано ли время
+    bool timeSynced() {
+        return _unix;
+    }
 
 private:
     // ================ BUILDER ===============
@@ -641,12 +684,15 @@ private:
     void (*_callback2)(FB_msg& msg) = nullptr;
     String _token;
     String* _query = nullptr;
-    uint16_t _ovf = 10000, prd = 1000, _limit = 10;
+    uint16_t _ovf = 10000, prd = 3500, _limit = 10;
     int32_t ID = 0;
     uint32_t tmr = 0;
     bool _incr = true;
     int32_t _lastUsrMsg = 0, _lastBotMsg = 0;
     uint8_t parseMode = 0;
     bool notif = true;
+    
+    uint32_t _unix = 0;
+    uint32_t _lastUpd = 0;
 };
 #endif

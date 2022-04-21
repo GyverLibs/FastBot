@@ -1,8 +1,5 @@
 // общее демо библиотеки. Обязательно смотри остальные примеры и документацию на гитхаб!
-
-// узнать токен бота можно у BotFather
-// узнать chat id можно по запросу https://api.telegram.org/bot<token>/getUpdates
-// искать "chat":{"id": тут id
+// где получить токен и ID https://kit.alexgyver.ru/tutorials/telegram-basic/
 
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
