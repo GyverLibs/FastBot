@@ -24,6 +24,7 @@ detach	KEYWORD2
 tickManual	KEYWORD2
 tick	KEYWORD2
 sendMessage	KEYWORD2
+sendSticker	KEYWORD2
 deleteMessage	KEYWORD2
 deleteMessageID	KEYWORD2
 editMessageID	KEYWORD2

@@ -61,6 +61,7 @@
     v2.4: Добавил url encode для текста сообщений
     v2.5: Добавил флаги в FB_msg: сообщение отредактировано и сообщение отправлено ботом. Улучшил парсинг текста
     v2.6: Добавил встроенные часы реального времени
+    v2.7: Добавил отправку стикеров
 */
 
 /*
@@ -223,6 +224,22 @@ public:
     }
     
     // ===================== ОТПРАВКА =====================
+    
+    // отправить стикер
+    uint8_t sendSticker(const String& sid) {
+        return sendSticker(sid, chatIDs);
+    }
+
+    uint8_t sendSticker(const String& sid, const String& id) {
+        if (!id.length()) return 5;
+        String req;
+        _addToken(req);
+        req += F("/sendSticker?sticker=");
+        req += sid;
+        if (!notif) req += F("&disable_notification=true");
+        return sendRequest(req, id);
+    }
+    
     // отправить сообщение
     uint8_t sendMessage(const String& msg) {
         return replyMessage(msg, 0, chatIDs);
