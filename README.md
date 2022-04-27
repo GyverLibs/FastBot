@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.7-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.8-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -195,7 +195,7 @@ void incrementID(uint8_t val);                  // вручную инкреме
 String chatIDs;                                 // указанная в setChatID строка, для отладки и редактирования списка
 
 // ================ ВРЕМЯ =================
-FB_Time getTime(int8_t gmt);        // получить текущее время, указать часовой пояс (например Москва 3)
+FB_Time getTime(int16_t gmt);       // получить текущее время, указать часовой пояс (например Москва 3) в часах или минутах
 bool timeSynced();                  // проверка, синхронизировано ли время
 uint32_t getUnix();                 // получить текущее unix время
 
@@ -346,7 +346,11 @@ void newMsg(FB_msg& msg) {
 Можно получить текущее время в unix формате при помощи функции `getUnix()`. Вернёт 0, если время не синхронизировано. Также есть функция 
 `timeSynced()`, вернёт `true` если часы синхронизированы. 
 
-Чтобы получить время в более удобном формате, есть функция `getTime(gmt)`, в неё нужно передать свой часовой пояс (3 для Москвы). Функция 
+Чтобы получить время в более удобном формате, есть функция `getTime(gmt)`, в неё нужно передать свой часовой пояс:
+- В часах, например 3 часа для Москвы (UTC+3:00)
+- В минутах, например 330 минут для Индии (UTC+5:30)
+
+Функция 
 возвращает тип данных `FB_Time`, который является структурой с полями:
 
 ```cpp
@@ -425,6 +429,7 @@ Serial.println(t.year);
 - v2.5: Добавил флаги в FB_msg: сообщение отредактировано и сообщение отправлено ботом. Улучшил парсинг текста
 - v2.6: Добавил встроенные часы реального времени
 - v2.7: Добавил отправку стикеров
+- v2.8: Убрал лишний вывод в сериал, GMT можно в минутах
 
 <a id="feedback"></a>
 ## Баги и обратная связь

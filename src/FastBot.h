@@ -62,6 +62,7 @@
     v2.5: Добавил флаги в FB_msg: сообщение отредактировано и сообщение отправлено ботом. Улучшил парсинг текста
     v2.6: Добавил встроенные часы реального времени
     v2.7: Добавил отправку стикеров
+    v2.8: Убрал лишний вывод в сериал, GMT можно в минутах
 */
 
 /*
@@ -187,7 +188,7 @@ public:
     
     // ===================== ТИКЕР =====================
     // ручная проверка обновлений
-    uint8_t tickManual() {uint32_t ms = millis();
+    uint8_t tickManual() {
         uint8_t status = 1;
         String req;
         _addToken(req);
@@ -199,7 +200,7 @@ public:
             if (_FB_httpGet.GET() == HTTP_CODE_OK) status = parse(_FB_httpGet.getString(), _FB_httpGet.getSize());
             else status = 3;
             _FB_httpGet.end();
-        } else status = 4;Serial.println(millis() - ms);
+        } else status = 4;
         return status;
     }
     
@@ -524,14 +525,24 @@ public:
     // ===================== ВРЕМЯ =====================
     // получить текущее unix время
     uint32_t getUnix() {
-        return _unix ? (_unix + (millis() - _lastUpd) / 1000ul) : 0;
+        if (_unix) {
+            // защита от переполнения разности через 50 суток
+            uint32_t diff = millis() - _lastUpd;
+            if (_unix && diff > 86400000ul) {
+                _unix += diff / 1000ul;
+                _lastUpd = millis() - diff % 1000ul;
+            }
+            return _unix + (millis() - _lastUpd) / 1000ul;
+        }
+        return 0;
     }
     
-    // получить текущее время, указать часовой пояс
-    FB_Time getTime(int8_t gmt) {
+    // получить текущее время, указать часовой пояс в часах или минутах
+    FB_Time getTime(int16_t gmt) {
         FB_Time t;
         if (!_unix) return t;
-        uint32_t u = getUnix() + gmt * 3600ul;
+        if (abs(gmt) <= 12) gmt *= 60;
+        uint32_t u = getUnix() + gmt * 60L;
         t.second = u % 60ul;
         u /= 60ul;
         t.minute = u % 60ul;
