@@ -109,8 +109,8 @@ uint8_t replyMessage(String msg, int32_t replyID, String id);
 
 
 // отправить стикер в указанный в setChatID чат/чаты ИЛИ передать id чата
-uint8_t sendSticker(const String& stickerID);
-uint8_t sendSticker(const String& stickerID, const String& id);
+uint8_t sendSticker(String stickerID);
+uint8_t sendSticker(String stickerID, String id);
 
 // ============== СООБЩЕНИЯ ===============
 // ответить на callback текстом (text) и режимом (alert) (true - предупреждение)
