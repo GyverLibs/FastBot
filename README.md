@@ -254,8 +254,8 @@ String dateString();    // получить строку даты формата
     - `int32_t ID` - ID сообщения
     - `String usrID` - ID юзера
     - `String first_name` - имя юзера
-    - `String last_name` - фамилия юзера
-    - `String username` - ник юзера
+    - `String last_name` - фамилия юзера (может не быть)
+    - `String username` - ник юзера (может не быть)
     - `String chatID` - ID чата
     - `String text` - текст сообщения
     - `bool query` - флаг запроса
