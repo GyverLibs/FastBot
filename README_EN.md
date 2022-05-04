@@ -12,7 +12,7 @@ Very simple and fast library for telegram bot on esp8266/esp32
 - Display inline menu in message
 - Unicode support (other languages ​​+ emoji) for incoming messages
 - Built-in urlencode for outgoing messages
-- Built-in real time clock with synchronization from Telegram
+- Built-in real time clock with synchronization from the Telegram server
 
 ### Compatibility
 ESP8266,ESP32
@@ -70,7 +70,7 @@ FastBot bot(token, limit, threshold, period);
 // token - unique bot code, taken from BotFather
 // limit - the number of messages received from one request (default 10)
 // threshold - the number of characters at which the API request will be considered too large and will be skipped (default 10000)
-// period -bot automatic polling period in ms (default 3500)
+// Pperiod - bot automatic polling period in ms (default 3500)
 ```
 
 <a id="docs"></a>
@@ -159,7 +159,7 @@ uint8_t closeMenu(String id);
 uint8_t showMenuText(String msg, String menu);
 uint8_t showMenuText(String msg, String menu, String id);
 
-//one-time menu (will close when selected)
+// one-time menu (will close when selected)
 uint8_t showMenuText(String msg, String menu, true);
 uint8_t showMenuText(String msg, String menu, String id, true);
 
@@ -205,6 +205,8 @@ uint8_t day; // day of the month
 uint8_tmonth; // month
 uint8_tdayWeek; // day of the week (Mon..Sun 1..7)
 uint16_t year; // year
+StringtimeString(); // get the time string in HH:MM:SS format
+String dateString(); // get date string in DD.MM.YYYY format
 
 // =============== STATUS ================
 // Many functions return status:
@@ -228,7 +230,7 @@ uint16_t year; // year
 
 ### Ticker
 To poll incoming messages, you need to call `tick()` in the main loop of the program `loop()`, polling occurs according to the built-in timer.
-By default, the polling period is set to 3500 milliseconds. You can poll more often (change via `setPeriod()`), but Telegram is sometimes dumb and
+By default, the polling period is set to 3500 milliseconds. You can poll more often (change via `setPeriod()`), but Telegram is sometimes stupid and
 with frequent polling, the query can run ~3 seconds instead of 60 milliseconds! During this time, the program "hangs" inside `tick()`.
 With a period of 3500 ms this does not happen, so I made it the default.
 
@@ -242,18 +244,20 @@ Messages are automatically read in `tick()`, when a new message arrives, the spe
 
 The handler is attached using `attach(FB_msg&)` or `attach(String&, String&)` (deprecated)
 - Create our own function in the sketch like `void function(FB_msg& message)`
-- Call `attach(funshare)`
+- Call `attach(function)`
 - This function will be automatically called on an incoming message if the chat IDs match or are not configured
 - Inside this function, you can use the passed variable `message`, which has the type `FB_msg` (structure) and contains:
     - `int32_t ID` - message ID
     - `String usrID` - user ID
     - `String first_name` - username
+    - `String last_name` - user last name
     - `String username` - user's nickname
     - `String chatID` - chat ID
     - `String text` - message text
     - `bool query` - query flag
-    - `bool edited` - message has been edited
-    - `bool isBot` - message from bot
+    - `bool edited` - message edited?
+    - `bool isBot` - message from bot?
+    - `uint32_t unix` - message time in unix format
 
 ### Minimal example
 ```cpp
@@ -335,22 +339,8 @@ void newMsg(FB_msg& msg) {
 }
 ```
 
-### Real time clock
-In response to any message from the bot, the server reports the time of sending in unix format. Since version 2.6 this time is parsed
-library and **count continues on** using standard time functions.
-Thus, it is enough to send a message once after turning on the board for the library to synchronize the clock. At
-further shipments, the time will also be synchronized and updated, because. the time calculated by means of esp will go away.
-
-You can get the current time in unix format using the `getUnix()` function. Returns 0 if the time is out of sync. There is also a function
-`timeSynced()` will return `true` if the clock is synchronized.
-
-To get the time in a more convenient format, there is a `getTime(gmt)` function, you need to pass your time zone to it:
-- In hours, for example 3 hours for Moscow (UTC+3:00)
-- In minutes, e.g. 330 minutes for India (UTC+5:30)
-
-Function
-returns the data type `FB_Time`, which is a structure with fields:
-
+### Time module
+The library has a data type `FB_Time`, which is a structure with fields:
 ```cpp
 uint8_t second; // seconds
 uint8_t minute; // minutes
@@ -361,9 +351,11 @@ uint8_tdayWeek; // day of the week (Mon..Sun 1..7)
 uint16_t year; // year
 ```
 
-You can use it like this (see the timeTest example):
+When creating a structure, you can specify unix time and time zone in hours or minutes (for example, 3 hours OR 180 minutes for Moscow (UTC+3:00),
+330 minutes for India (UTC+5:30)). After that, you can take the desired time values:
+
 ```cpp
-FB_Time t = bot.getTime(3);
+FB_Time t(1651694501, 3);
 Serial.print(t.hour);
 serial print(':');
 Serial.print(t.minute);
@@ -377,11 +369,43 @@ serial print(':');
 serial.println(t.year);
 ```
 
-<a id="example"></a>
-## Example
+Since version 2.9, the library can display formatted time (String):
 ```cpp
-
+Serial.print(t.timeString()); // HH:MM:SS
+Serial print(' ');
+Serial.println(t.dateString()); // DD.MM.YYYY
 ```
+
+### Message received time
+In the incoming message handler, the `FB_msg` structure has a `unix` field that stores the time of the message in unix format.
+To translate into a more readable format, we act according to the scheme described above:
+```cpp
+void newMsg(FB_msg& msg) {
+  FB_Time t(msg.unix, 3); // passed unix and timezone
+  Serial.print(t.timeString());
+  Serial print(' ');
+  Serial.println(t.dateString());
+}
+```
+
+### Real time clock
+In response to any message from the bot, the server reports the time of sending in unix format. Since version 2.6 this time is parsed
+library and **count continues on** using standard time functions. Thus, it is enough to send once
+message after the board is turned on, so that the library synchronizes the clock. The time will also be synchronized on further sendings.
+and to be specified, because the time calculated by means of esp will go away (~ 2 seconds per day). Instruments:
+
+- `uint32_t getUnix()` - returns the current time in unix format or `0` if the time is out of sync.
+- `bool timeSynced()` - will return `true` if the clock is synchronized.
+- `FB_Time getTime(gmt)` - you need to pass your time zone, it will return `FB_Time`.
+
+Thus, there are two ways to get the time (see the timeTest example):
+```cpp
+FB_Time t = bot.getTime(3);
+// or
+FB_Time t(bot.getUnix(), 3);
+```
+
+<a id="example"></a>
 
 <a id="versions"></a>
 ## Versions
@@ -428,6 +452,7 @@ serial.println(t.year);
 - v2.6: Added built-in real time clock
 - v2.7: Added sending stickers
 - v2.8: Removed extra serial output, GMT can be in minutes
+- v2.9: Parsing bug fixed, parsing speeded up, formatted time output added, last name and message time added
 
 <a id="feedback"></a>
 ## Bugs and feedback
