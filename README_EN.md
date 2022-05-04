@@ -1,3 +1,5 @@
+This is an automatic translation, may be incorrect in some places. See sources and examples!
+
 # FastBot
 Very simple and fast library for telegram bot on esp8266/esp32
 - Works on standard libraries
