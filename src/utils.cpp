@@ -18,6 +18,7 @@ void FB_urlencode(const String& s, String& dest) {
 // разработано Глебом Жуковым, допилено AlexGyver
 // https://vk.com/wall-97877471_783011
 void FB_unicode(String &uStr) {
+    if (!uStr.length()) return;
     String out;
     out.reserve(uStr.length() / 3);
     int32_t uBytes, buf = 0;

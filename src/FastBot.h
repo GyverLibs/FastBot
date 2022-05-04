@@ -63,6 +63,7 @@
     v2.6: Добавил встроенные часы реального времени
     v2.7: Добавил отправку стикеров
     v2.8: Убрал лишний вывод в сериал, GMT можно в минутах
+    v2.9: Исправлена бага в парсинге, парсинг ускорен, добавлен вывод форматированного времени, добавлена фамилия и время сообщения
 */
 
 /*
@@ -101,18 +102,6 @@ static HTTPClient _FB_httpGet;
 #endif
 
 #include "utils.h"
-
-struct FB_msg {
-    int32_t ID;         // ID сообщения
-    String& usrID;      // ID юзера
-    String& first_name; // имя
-    String& username;   // ник
-    String& chatID;     // ID чата
-    String& text;       // текст
-    bool query;         // запрос
-    bool edited;        // сообщение отредактировано
-    bool isBot;         // сообщение от бота
-};
 
 // ================================
 class FastBot {
@@ -497,10 +486,10 @@ public:
             String msgID;
             const String& answ = _FB_httpReq.getString();
             int16_t st = 0, end;
-            find(answ, msgID, st, end, F("\"message_id\":"), F(",\""), 13, answ.length());
+            find(answ, msgID, st, end, F("\"message_id\":"), ',', answ.length());
             _lastBotMsg = msgID.toInt();
             String date;
-            if (find(answ, date, st, end, F("\"date\":"), F(","), 7, answ.length())) {
+            if (find(answ, date, st, end, F("\"date\":"), ',', answ.length())) {
                 _unix = date.toInt();
                 _lastUpd = millis();
             }
@@ -539,29 +528,7 @@ public:
     
     // получить текущее время, указать часовой пояс в часах или минутах
     FB_Time getTime(int16_t gmt) {
-        FB_Time t;
-        if (!_unix) return t;
-        if (abs(gmt) <= 12) gmt *= 60;
-        uint32_t u = getUnix() + gmt * 60L;
-        t.second = u % 60ul;
-        u /= 60ul;
-        t.minute = u % 60ul;
-        u /= 60ul;
-        t.hour = u % 24ul;
-        u /= 24ul;
-        t.dayWeek = (u + 4) % 7;
-        if (!t.dayWeek) t.dayWeek = 7;
-        u += 719468;
-        uint8_t era = u / 146097ul;
-        uint16_t doe = u - era * 146097ul;
-        uint16_t yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-        t.year = yoe + era * 400;
-        uint16_t doy = doe - (yoe * 365 + yoe / 4 - yoe / 100);
-        uint16_t mp = (doy * 5 + 2) / 153;
-        t.day = doy - (mp * 153 + 2) / 5 + 1;
-        t.month = mp + (mp < 10 ? 3 : -9);
-        t.year += (t.month <= 2);
-        return t;
+        return FB_Time(getUnix(), gmt);
     }
     
     // проверка, синхронизировано ли время
@@ -619,15 +586,16 @@ private:
     }
     
     // ======================== PARSING =========================
-    bool find(const String& str, String& dest, int16_t& start, int16_t& end, const String& from, const String& to, int16_t len, int16_t pos) {
+    bool find(const String& str, String& dest, int16_t& start, int16_t& end, const String& from, char to, int16_t pos) {
         int strPos = str.indexOf(from, start);
         if (strPos < 0 || strPos > pos) return 0;
-        start = strPos + len;
+        start = strPos + from.length();
         end = start;
         while (1) {
             end = str.indexOf(to, end);
             if (str[end - 1] != '\\') break;
             end++;
+            if (end >= pos) return 0;
         }
         dest = str.substring(start, end);
         start = end;
@@ -660,45 +628,64 @@ private:
                 if (IDpos == -1) IDpos = str.length();                  // если конец пакета - для удобства считаем что позиция ID в конце
                 
                 String query;
-                find(str, query, textPos, endPos, F("query\":{\"id\":\""), F(",\""), 14, IDpos);
+                find(str, query, textPos, endPos, F("query\":{\"id\":\""), ',', IDpos);
                 _query = &query;
                 
                 bool edited = find(str, F("\"edited_message\":"), textPos, IDpos);
                 
                 String message_id;
-                if (!find(str, message_id, textPos, endPos, F("\"message_id\":"), F(",\""), 13, IDpos)) continue;
+                if (!find(str, message_id, textPos, endPos, F("\"message_id\":"), ',', IDpos)) continue;
                 _lastUsrMsg = message_id.toInt();
                 
                 String usrID;
-                if (!find(str, usrID, textPos, endPos, F("\"id\":"), F(",\""), 5, IDpos)) continue;
+                if (!find(str, usrID, textPos, endPos, F("\"id\":"), ',', IDpos)) continue;
                 
                 bool is_bot = find(str, F("\"is_bot\":true"), textPos, IDpos);
                 
                 String first_name;
-                find(str, first_name, textPos, endPos, F("\"first_name\":\""), F("\",\""), 14, IDpos);
+                find(str, first_name, textPos, endPos, F("\"first_name\":\""), '\"', IDpos);
+                
+                String last_name;
+                find(str, last_name, textPos, endPos, F("\"last_name\":\""), '\"', IDpos);
 
                 String username;
-                find(str, username, textPos, endPos, F("\"username\":\""), F("\",\""), 12, IDpos);
+                find(str, username, textPos, endPos, F("\"username\":\""), '\"', IDpos);
                 
                 String chatID;
-                if (!find(str, chatID, textPos, endPos, F("\"chat\":{\"id\":"), F(",\""), 13, IDpos)) continue;
+                if (!find(str, chatID, textPos, endPos, F("\"chat\":{\"id\":"), ',', IDpos)) continue;
                 if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;  // проверка на ID чата
+                
+                String date;
+                find(str, date, textPos, endPos, F("\"date\":"), ',', IDpos);
                 
                 String text;
                 bool data = find(str, F("\"data\":\""), textPos, IDpos);
                 if (data) {
-                    find(str, text, textPos, endPos, F("\"data\":\""), F("\""), 8, IDpos);
+                    find(str, text, textPos, endPos, F("\"data\":\""), '\"', IDpos);
                 } else {
-                    if (!find(str, text, textPos, endPos, F("\"text\":\""), F("\""), 8, IDpos)) continue;
+                    if (!find(str, text, textPos, endPos, F("\"text\":\""), '\"', IDpos)) continue;
                 }
 
                 #ifndef FB_NO_UNICODE
                 FB_unicode(first_name);
+                FB_unicode(last_name);
                 FB_unicode(username);
                 FB_unicode(text);
                 #endif
 
-                FB_msg message = (FB_msg){_lastUsrMsg, usrID, first_name, username, chatID, text, (query.length() > 0), edited, is_bot};
+                FB_msg message = (FB_msg) {
+                    _lastUsrMsg,
+                    usrID,
+                    first_name,
+                    last_name,
+                    username,
+                    chatID,
+                    text,
+                    (query.length() > 0),
+                    edited,
+                    is_bot,
+                    (uint32_t)date.toInt()
+                };
                 if (*_callback2) _callback2(message);
                 if (*_callback) _callback(username, text);
                 _query = nullptr;

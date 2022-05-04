@@ -56,12 +56,14 @@ getUnix	KEYWORD2
 ID	KEYWORD2
 usrID	KEYWORD2
 first_name	KEYWORD2
+last_name	KEYWORD2
 username	KEYWORD2
 chatID	KEYWORD2
 text	KEYWORD2
 query	KEYWORD2
 edited	KEYWORD2
 isBot	KEYWORD2
+unix 	KEYWORD2
 
 second	KEYWORD2
 minute	KEYWORD2
@@ -70,6 +72,9 @@ day	KEYWORD2
 month	KEYWORD2
 dayWeek	KEYWORD2
 year	KEYWORD2
+
+timeString	KEYWORD2
+dateString	KEYWORD2
 
 FB_unicode	KEYWORD2
 

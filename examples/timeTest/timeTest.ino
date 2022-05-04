@@ -9,17 +9,29 @@ FastBot bot(BOT_TOKEN);
 void setup() {
   connectWiFi();
   bot.sendMessage("start", CHAT_ID);
+  bot.attach(newMsg);
+}
+
+void newMsg(FB_msg& msg) {
+  Serial.print(msg.text);
+  Serial.print(", ");
+  
+  FB_Time t(msg.unix, 3);
+  Serial.print(t.timeString());
+  Serial.print(' ');
+  Serial.println(t.dateString());
 }
 
 void loop() {
   bot.tick();
 
   static uint32_t tmr;
-  if (millis() - tmr > 500) {
+  if (millis() - tmr >= 1000) {
     tmr = millis();
     // выведем время и дату
     FB_Time t = bot.getTime(3);
-    Serial.print(t.hour);
+    
+    /*Serial.print(t.hour);
     Serial.print(':');
     Serial.print(t.minute);
     Serial.print(':');
@@ -29,7 +41,11 @@ void loop() {
     Serial.print(':');
     Serial.print(t.month);
     Serial.print(':');
-    Serial.println(t.year);
+    Serial.println(t.year);*/
+    
+    Serial.print(t.timeString());
+    Serial.print(' ');
+    Serial.println(t.dateString());
   }
 }
 
