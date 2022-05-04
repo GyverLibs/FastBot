@@ -30,7 +30,7 @@ For comparison, we used a minimal example with sending a message to the chat and
 
 | library | Flash, B | SRAM, B | send, ms | update, ms | free heap, B |
 |-----------|----------|---------|----------|----- -------|--------------|
-| Univ..Bot | 400004 | 29848 | 2000 | 1900| 38592 |
+| Univ..Bot | 400004 | 29848 | 2000 | 1900 | 38592 |
 | fastbot | 393220 | 28036 | 70 | 70 | 37552 |
 | diff | 6784 | 1812 | 1930 | 1830 | 1040 |
 
@@ -199,7 +199,7 @@ uint32_t getUnix(); // get the current unix time
 
 // FB_Time structure
 uint8_t second; // seconds
-uint8_t mcranberry inute; // minutes
+uint8_t minute; // minutes
 uint8_t hour; // clock
 uint8_t day; // day of the month
 uint8_tmonth; // month
@@ -310,7 +310,7 @@ Menu in the message. Requires a menu name:
 ```cpp
 inlineMenu("MyMenu", "Menu1 \t Menu2 \t Menu3 \n Menu4");
 ```
-Pressing the button **sendis the text from the button**.
+Pressing the button **sends the text from the button**.
 
 ### Inline menu with callback
 Menu in the message. The callback allows you to set a unique text for each button, which will be sent to the bot instead of the text from the button.
