@@ -26,19 +26,19 @@ void newMsg(FB_msg& msg) {
   String menu4 = F("Answer 3.1 \t Answer 3.2 \t Answer 3.3 \n Back");
   
   if (msg.text == "Menu 1") {
-    bot.editMenu(bot.lastBotMsg(), menu2, "");
+    bot.editMenu(bot.lastBotMsg(), menu2);
     depth = 1;
   }
   if (msg.text == "Menu 2") {
-    bot.editMenu(bot.lastBotMsg(), menu3, "");
+    bot.editMenu(bot.lastBotMsg(), menu3);
     depth = 1;
   }
   if (msg.text == "Menu 3") {
-    bot.editMenu(bot.lastBotMsg(), menu4, "");
+    bot.editMenu(bot.lastBotMsg(), menu4);
     depth = 1;
   }
   if (msg.text == "Back" && depth == 1) {
-    bot.editMenu(bot.lastBotMsg(), menu1, "");
+    bot.editMenu(bot.lastBotMsg(), menu1);
     depth = 0;
   }
 

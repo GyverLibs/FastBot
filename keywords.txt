@@ -28,6 +28,7 @@ sendSticker	KEYWORD2
 deleteMessage	KEYWORD2
 editMessage	KEYWORD2
 editMenu	KEYWORD2
+editMenuCallback	KEYWORD2
 showMenu	KEYWORD2
 showMenuText	KEYWORD2
 closeMenu	KEYWORD2

@@ -108,15 +108,16 @@ static HTTPClient _FB_httpGet;
 class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
-    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 3500) {
+    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 3600) {
         _token.reserve(46);
         chatIDs.reserve(10);
         _token = token;
         _ovf = ovf;
         _limit = limit;
-        prd = period;
+        _prd = period;
         setBufferSizes(512, 512);
         _FB_client.setInsecure();
+        //_FB_httpGet.setTimeout(500);
     }
     
     // ===================== НАСТРОЙКИ =====================
@@ -128,18 +129,18 @@ public:
     }
     
     // макс кол-во сообщений на запрос
-    void setLimit(int limit) {
+    void setLimit(uint16_t limit) {
         _limit = limit;
     }
     
     // макс символов
-    void setOvf(int ovf) {
+    void setOvf(uint16_t ovf) {
         _ovf = ovf;
     }
     
     // период опроса
-    void setPeriod(int period) {
-        prd = period;
+    void setPeriod(uint16_t period) {
+        _prd = period;
     }
     
     // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
@@ -196,7 +197,7 @@ public:
     
     // проверка обновлений по таймеру
     uint8_t tick() {
-        if (millis() - tmr >= prd) {
+        if (millis() - tmr >= _prd) {
             tmr = millis();
             return tickManual();
         }
@@ -318,17 +319,32 @@ public:
     
     // ================ РЕДАКТИРОВАНИЕ ИНЛАЙН =================
     // редактировать меню id
-    uint8_t editMenu(int32_t msgid, const String& str, const String& cbck) {
-        return editMenu(msgid, str, cbck, chatIDs);
+    uint8_t editMenuCallback(int32_t msgid, const String& str, const String& cbck) {
+        return editMenuCallback(msgid, str, cbck, chatIDs);
     }
     
-    uint8_t editMenu(int32_t msgid, const String& str, const String& cbck, const String& id) {
+    uint8_t editMenuCallback(int32_t msgid, const String& str, const String& cbck, const String& id) {
         if (!id.length()) return 5;
         String req;
         _addToken(req);
         req += F("/editMessageReplyMarkup?");
         _addMsgID(req, msgid);
         _addInlineMenu(req, str, cbck);
+        return sendRequest(req, id);
+    }
+    
+    // редактировать callback меню id
+    uint8_t editMenu(int32_t msgid, const String& str) {
+        return editMenu(msgid, str, chatIDs);
+    }
+    
+    uint8_t editMenu(int32_t msgid, const String& str, const String& id) {
+        if (!id.length()) return 5;
+        String req;
+        _addToken(req);
+        req += F("/editMessageReplyMarkup?");
+        _addMsgID(req, msgid);
+        _addInlineMenu(req, str, "");
         return sendRequest(req, id);
     }
     
@@ -794,7 +810,7 @@ private:
     void (*_callback2)(FB_msg& msg) = nullptr;
     String _token;
     String* _query = nullptr;
-    uint16_t _ovf = 10000, prd = 3500, _limit = 10;
+    uint16_t _ovf, _prd, _limit;
     int32_t ID = 0;
     uint32_t tmr = 0;
     bool _incr = true;
