@@ -26,7 +26,7 @@ void newMsg(FB_msg& msg) {
   String menu4 = F("Answer 3.1 \t Answer 3.2 \t Answer 3.3 \n Back");
 
   // удаляем последнее сообщение от бота
-  bot.deleteMessage(0);
+  bot.deleteMessage(bot.lastBotMsg());
   
   if (msg.text == "Menu 1") {
     bot.inlineMenu("Menu 1", menu2);

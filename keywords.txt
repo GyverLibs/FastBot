@@ -26,10 +26,8 @@ tick	KEYWORD2
 sendMessage	KEYWORD2
 sendSticker	KEYWORD2
 deleteMessage	KEYWORD2
-deleteMessageID	KEYWORD2
-editMessageID	KEYWORD2
 editMessage	KEYWORD2
-editMenuID	KEYWORD2
+editMenu	KEYWORD2
 showMenu	KEYWORD2
 showMenuText	KEYWORD2
 closeMenu	KEYWORD2
@@ -48,6 +46,13 @@ lastUsrMsg	KEYWORD2
 setTextMode	KEYWORD2
 replyMessage	KEYWORD2
 notify	KEYWORD2
+sendCommand	KEYWORD2
+setChatTitle	KEYWORD2
+setChatDescription	KEYWORD2
+clearServiceMessages	KEYWORD2
+pinMessage	KEYWORD2
+unpinMessage	KEYWORD2
+unpinAll	KEYWORD2
 
 timeSynced	KEYWORD2
 getTime	KEYWORD2

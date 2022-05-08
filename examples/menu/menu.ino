@@ -1,4 +1,5 @@
-// бот меняет своё сообщение на отправленное в чат
+// обычное меню. С кнопкой закрыть (для примера)
+
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
 #define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
@@ -9,25 +10,23 @@ FastBot bot(BOT_TOKEN);
 
 void setup() {
   connectWiFi();
-
-  bot.attach(newMsg);
   bot.setChatID(CHAT_ID);
-  bot.sendMessage("Edit me!");
+
+  // подключаем функцию-обработчик
+  bot.attach(newMsg);
+
+  // показать юзер меню (\t - горизонтальное разделение кнопок, \n - вертикальное
+  bot.showMenu("Menu1 \t Menu2 \t Menu3 \n Close");
 }
 
+// обработчик сообщений
 void newMsg(FB_msg& msg) {
-  Serial.print(msg.chatID);     // ID чата 
-  Serial.print(", ");
-  Serial.print(msg.username);   // логин
-  Serial.print(", ");
-  Serial.println(msg.text);     // текст
-
-  // редактируем последнее сообщение от бота
-  bot.editMessage(bot.lastBotMsg(), msg.text);
+  if (msg.text == "Close") bot.closeMenu();
+  else Serial.println(msg.text);
 }
 
 void loop() {
-  bot.tick();
+  bot.tick();   // тикаем в луп
 }
 
 void connectWiFi() {

@@ -1,33 +1,30 @@
-// бот меняет своё сообщение на отправленное в чат
+// закрепление и открепление сообщений
+// напиши unpin для открепления всех сообщений
+
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
 #define BOT_TOKEN "2654326546:asjhAsfAsfkllgUsaOuiz_axfkj_AsfkjhB"
-#define CHAT_ID "123456789"
+#define CHAT_ID "123456"
 
 #include <FastBot.h>
 FastBot bot(BOT_TOKEN);
 
 void setup() {
   connectWiFi();
-
-  bot.attach(newMsg);
   bot.setChatID(CHAT_ID);
-  bot.sendMessage("Edit me!");
+  bot.attach(newMsg);
+  bot.clearServiceMessages(true);
+  bot.sendMessage("Hello!");
+  bot.pinMessage(bot.lastBotMsg()); // закрепить последнее сообщение
 }
 
+// обработчик сообщений
 void newMsg(FB_msg& msg) {
-  Serial.print(msg.chatID);     // ID чата 
-  Serial.print(", ");
-  Serial.print(msg.username);   // логин
-  Serial.print(", ");
-  Serial.println(msg.text);     // текст
-
-  // редактируем последнее сообщение от бота
-  bot.editMessage(bot.lastBotMsg(), msg.text);
+  if (msg.text == "unpin") bot.unpinAll();
 }
 
 void loop() {
-  bot.tick();
+  bot.tick();   // тикаем в луп
 }
 
 void connectWiFi() {

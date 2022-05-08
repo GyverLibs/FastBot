@@ -30,29 +30,6 @@ void setup() {
 
   // отправить сообщение в указанный в setChatID
   bot.sendMessage("Hello, World!");
-
-  // отправить сообщение в указанный ЗДЕСЬ чат/чаты (разделитель - запятая)
-  //bot.sendMessage("Hello, World! External ID", "123456,7891011,12131415");
-
-  // показать юзер меню (\t - горизонтальное разделение кнопок, \n - вертикальное
-  //bot.showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4");
-
-  // аналогично в указанный конкретно ЗДЕСЬ чат/чаты
-  //bot.showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4", "123456,7891011,12131415");
-
-  // скрыть юзер меню
-  //delay(3000);
-  //bot.closeMenu();  // для всех в setChatID
-  //bot.closeMenu("123456,7891011,12131415"); // конкретный чат/чаты
-
-  // отправить инлайн меню (\t - горизонтальное разделение кнопок, \n - вертикальное
-  // (текст сообщения, кнопки)
-  //bot.inlineMenu("Choose wisely", "Answer 1 \t Answer 2 \t Answer 3 \n Answer 4");
-
-  // инлайн меню с коллбэком
-  String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
-  String cback1 = F("action1,action2,action3,back");
-  bot.inlineMenuCallback("Menu 1", menu1, cback1);
 }
 
 // обработчик сообщений
@@ -60,13 +37,15 @@ void newMsg(FB_msg& msg) {
   // выводим ID чата, имя юзера и текст сообщения
   Serial.print(msg.chatID);     // ID чата
   Serial.print(", ");
-  Serial.print(msg.username);   // логин
+  Serial.print(msg.ID);         // ID сообщения
   Serial.print(", ");
   Serial.print(msg.first_name); // имя
   Serial.print(", ");
-  Serial.print(msg.usrID);      // ID юзера
+  Serial.print(msg.last_name);  // фамилия
   Serial.print(", ");
-  Serial.print(msg.ID);         // ID сообщения
+  Serial.print(msg.username);   // логин
+  Serial.print(", ");
+  Serial.print(msg.usrID);      // ID юзера
   Serial.print(", ");
   Serial.println(msg.text);     // текст
 }

@@ -64,6 +64,7 @@
     v2.7: Добавил отправку стикеров
     v2.8: Убрал лишний вывод в сериал, GMT можно в минутах
     v2.9: Исправлена бага в парсинге, парсинг ускорен, добавлен вывод форматированного времени, добавлена фамилия и время сообщения
+    v2.10: Добавлены функции для изменения названия и описания чата, закрепления и открепления сообщений. Убраны edit/deleteMessageID, editMenuID
 */
 
 /*
@@ -108,7 +109,7 @@ class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
     FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 3500) {
-        _token.reserve(50);
+        _token.reserve(46);
         chatIDs.reserve(10);
         _token = token;
         _ovf = ovf;
@@ -142,11 +143,11 @@ public:
     }
     
     // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
-    void setChatID(String chatID) {
+    void setChatID(const String& chatID) {
         chatIDs = chatID;        
     }
     
-    void setToken(String token) {
+    void setToken(const String& token) {
         _token = token;
     }
 
@@ -214,6 +215,18 @@ public:
     }
     
     // ===================== ОТПРАВКА =====================
+    // отправить команду API (пример: "/sendSticker?sticker=123456")
+    uint8_t sendCommand(const String& cmd, const String& id) {
+        if (!id.length()) return 5;
+        String req;
+        _addToken(req);
+        req += cmd;
+        return sendRequest(req, id);
+    }
+    
+    uint8_t sendCommand(const String& cmd) {
+        return sendCommand(cmd, chatIDs);
+    }
     
     // отправить стикер
     uint8_t sendSticker(const String& sid) {
@@ -264,22 +277,13 @@ public:
         return sendRequest(req, id);
     }
     
-    // ==================== УДАЛЕНИЕ =====================
-    // удалить сообщение со смещением offset
-    uint8_t deleteMessage(int32_t offset) {
-        return deleteMessageID(_lastUsrMsg - offset, chatIDs);
-    }
-    
-    uint8_t deleteMessage(int32_t offset, const String& id) {
-        return deleteMessageID(_lastUsrMsg - offset, id);
-    }
-    
+    // ==================== УДАЛЕНИЕ =====================    
     // удалить сообщение id
-    uint8_t deleteMessageID(int32_t msgid) {
-        return deleteMessageID(msgid, chatIDs);
+    uint8_t deleteMessage(int32_t msgid) {
+        return deleteMessage(msgid, chatIDs);
     }
     
-    uint8_t deleteMessageID(int32_t msgid, const String& id) {
+    uint8_t deleteMessage(int32_t msgid, const String& id) {
         if (!id.length()) return 5;
         String req;
         _addToken(req);
@@ -289,21 +293,12 @@ public:
     }
     
     // ==================== РЕДАКТИРОВАНИЕ =====================
-    // редактировать сообщение со смещением offset
-    uint8_t editMessage(int32_t offset, const String& text) {
-        return editMessageID(_lastUsrMsg - offset, text, chatIDs);
-    }
-    
-    uint8_t editMessage(int32_t offset, const String& text, const String& id) {
-        return editMessageID(_lastUsrMsg - offset, text, id);
-    }
-    
     // редактировать сообщение id
-    uint8_t editMessageID(int32_t msgid, const String& text) {
-        return editMessageID(msgid, text, chatIDs);
+    uint8_t editMessage(int32_t msgid, const String& text) {
+        return editMessage(msgid, text, chatIDs);
     }
 
-    uint8_t editMessageID(int32_t msgid, const String& text, const String& id) {
+    uint8_t editMessage(int32_t msgid, const String& text, const String& id) {
         if (!id.length()) return 5;
         #ifndef FB_NO_URLENCODE
         String utext;
@@ -323,11 +318,11 @@ public:
     
     // ================ РЕДАКТИРОВАНИЕ ИНЛАЙН =================
     // редактировать меню id
-    uint8_t editMenuID(int32_t msgid, const String& str, const String& cbck) {
-        return editMenuID(msgid, str, cbck, chatIDs);
+    uint8_t editMenu(int32_t msgid, const String& str, const String& cbck) {
+        return editMenu(msgid, str, cbck, chatIDs);
     }
     
-    uint8_t editMenuID(int32_t msgid, const String& str, const String& cbck, const String& id) {
+    uint8_t editMenu(int32_t msgid, const String& str, const String& cbck, const String& id) {
         if (!id.length()) return 5;
         String req;
         _addToken(req);
@@ -355,6 +350,97 @@ public:
         #endif
         if (alert) req += F("&show_alert=true");
         return sendRequest(req);
+    }
+    
+    // ============= ГРУППОВЫЕ ДЕЙСТВИЯ =============
+    // удалять из чата сервисные сообщения о смене названия и закреплении сообщений
+    void clearServiceMessages(bool state) {
+        clrSrv = state;
+    }
+    
+    // установить имя группы (бот должен иметь права админа)
+    uint8_t setChatTitle(const String& title, const String& id) {
+        if (!id.length()) return 5;
+        #ifndef FB_NO_URLENCODE
+        String utitle;
+        FB_urlencode(title, utitle);
+        #endif
+        String req;
+        _addToken(req);
+        req += F("/setChatTitle?title=");
+        #ifndef FB_NO_URLENCODE
+        req += utitle;
+        #else
+        req += title;
+        #endif
+        return sendRequest(req, id);
+    }
+    
+    uint8_t setChatTitle(const String& title) {
+        return setChatTitle(title, chatIDs);
+    }
+    
+    // установить описание группы (бот должен иметь права админа)
+    uint8_t setChatDescription(const String& descr, const String& id) {
+        if (!id.length()) return 5;
+        #ifndef FB_NO_URLENCODE
+        String udescr;
+        FB_urlencode(descr, udescr);
+        #endif
+        String req;
+        _addToken(req);
+        req += F("/setChatDescription?description=");
+        #ifndef FB_NO_URLENCODE
+        req += udescr;
+        #else
+        req += descr;
+        #endif
+        return sendRequest(req, id);
+    }
+    
+    uint8_t setChatDescription(const String& descr) {
+        return setChatDescription(descr, chatIDs);
+    }
+    
+    // закрепить сообщение с ID msgid
+    uint8_t pinMessage(int32_t msgid, const String& id) {
+        if (!id.length()) return 5;
+        String req;
+        _addToken(req);
+        req += F("/pinChatMessage?disable_notification=True");
+        _addMsgID(req, msgid);
+        return sendRequest(req, id);
+    }
+    
+    uint8_t pinMessage(int32_t msgid) {
+        return pinMessage(msgid, chatIDs);
+    }
+    
+    // открепить сообщение с ID msgid
+    uint8_t unpinMessage(int32_t msgid, const String& id) {
+        if (!id.length()) return 5;
+        String req;
+        _addToken(req);
+        req += F("/unpinChatMessage");
+        _addMsgID(req, msgid);
+        return sendRequest(req, id);
+    }
+    
+    uint8_t unpinMessage(int32_t msgid) {
+        return unpinMessage(msgid, chatIDs);
+    }
+    
+    // открепить все сообщения в чате
+    uint8_t unpinAll(const String& id) {
+        if (!id.length()) return 5;
+        String req;
+        _addToken(req);
+        req += F("/unpinAllChatMessages?");
+        return sendRequest(req, id);
+    }
+    
+    uint8_t unpinAll() {
+        return unpinAll(chatIDs);
     }
     
     // ===================== МЕНЮ =====================
@@ -658,6 +744,14 @@ private:
                 String date;
                 find(str, date, textPos, endPos, F("\"date\":"), ',', IDpos);
                 
+                if (clrSrv) {
+                    if (find(str, F("\"new_chat_title\""), textPos, IDpos) ||
+                        find(str, F("\"pinned_message\""), textPos, IDpos)) {
+                            deleteMessage(message_id.toInt(), chatID);
+                            continue;
+                    }
+                }
+                
                 String text;
                 bool data = find(str, F("\"data\":\""), textPos, IDpos);
                 if (data) {
@@ -707,6 +801,7 @@ private:
     int32_t _lastUsrMsg = 0, _lastBotMsg = 0;
     uint8_t parseMode = 0;
     bool notif = true;
+    bool clrSrv = false;
     
     uint32_t _unix = 0;
     uint32_t _lastUpd = 0;
