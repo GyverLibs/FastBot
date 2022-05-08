@@ -15,7 +15,7 @@ Very simple and fast library for telegram bot on esp8266/esp32
 - Built-in real time clock with synchronization from the Telegram server
 
 ### Compatibility
-ESP8266,ESP32
+ESP8266 (SDK v2.6+), ESP32
 
 ## Documentation and projects
 Detailed tutorials on working with the Telegram bot using this library can be found on the [GyverKIT Arduino website] (https://kit.alexgyver.ru/tutorials-category/telegram/)
@@ -23,7 +23,7 @@ Detailed tutorials on working with the Telegram bot using this library can be fo
 ## Comparison with Universal-Arduino-Telegram-Bot
 [Universal-Arduino-Telegram-Bot](https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot)
 
-For comparison, we used a minimal example with sending a message to the chat and outputting incoming messages to the series:
+For comparison, a minimal example was used with sending a message to the chat and outputting incoming messages to the series:
 - **send** - send a message to the chat
 - **update** - check incoming messages
 - **free heap** - amount of free RAM while the program is running
@@ -69,8 +69,8 @@ FastBot bot(token, limit, threshold);
 FastBot bot(token, limit, threshold, period);
 // token - unique bot code, taken from BotFather
 // limit - the number of messages received from one request (default 10)
-// threshold - the number of characters at which the API request will be considered too large and will be skipped (default 10000)
-// Pperiod - bot automatic polling period in ms (default 3500)
+// threshold - the number of characters at which the API request will be considered too large and will be skipped (by default. 10000)
+// period - bot automatic polling period in ms (default 3500)
 ```
 
 <a id="docs"></a>
@@ -83,20 +83,23 @@ void setPeriod(int period); // polling period in ms (default 3500)
 void setLimit(int limit); // max number of messages per request
 void setOvf(int ovf); // max number of characters per request (flood protection)
 void setBufferSizes(uint16_t rx, uint16_t tx); // set buffer sizes for receiving and sending, by default. 512 and 512 bytes (only for esp8266)
-   
+
+void setTextMode(uint8_t mode); // text mode "to send": FB_TEXT, FB_MARKDOWN, FB_HTML (see textMode example)
+void notify(bool mode); // true/false enable/disable notifications from bot messages (on by default)
+void clearServiceMessages(bool state); // remove service messages about changing the name and pinning messages from the chat (default false)
+
 
 // =============== PARSING ===============
-void attach(void (*FB_msg)(msg&)); // connection of the message handler
-void attach(void (*handler)(String&, String&)); // connect message handler (deprecated)
-void detach(); // disable ALL MESSAGE HANDLERS
+void attach(callback); // connection of the message handler function
+void detach(); // disable message handler
 
 
-// ================ TICKER =================
+// ================ TICKER ================
 uint8_t tickManual(); // manual check for updates
 uint8_t tick(); // check for updates by timer
 
 
-// ============== MESSAGES ===============
+// ============== SENDING ================
 // send a message to the chat/chats specified in setChatID OR pass the chat id
 uint8_t sendMessage(String msg);
 uint8_t sendMessage(String msg, String id);
@@ -105,39 +108,24 @@ uint8_t sendMessage(String msg, String id);
 uint8_t replyMessage(String msg, int32_t replyID);
 uint8_t replyMessage(String msg, int32_t replyID, String id);
 
-
 // send the sticker to the chat/chats specified in setChatID OR pass the chat id
 uint8_t sendSticker(String stickerID);
 uint8_t sendSticker(String stickerID, String id);
 
-// ============== MESSAGES ===============
-// respond to callback with text (text) and mode (alert) (true - warning)
+// respond to callback with text (text) and mode (alert): true - warning, false - hint
 uint8_t answer(String text, bool alert = false);
 
-void setTextMode(uint8_t mode); // text processing mode: FB_TEXT, FB_MARKDOWN, FB_HTML
-void notify(bool mode); // true/false enable/disable notifications from bot messages (on by default)
 
-int32_t lastBotMsg(); // ID of the last message sent by the bot
-int32_t lastUsrMsg(); // ID of the last message sent by the user
-
-
-// ============== DELETE ===============
-// delete a message with an offset from the last (offset) in the chat specified in setChatID OR pass the chat id
-uint8_t deleteMessage(int32_t offset);
-uint8_t deleteMessage(int32_t offset, String id);
-
+// =============== DELETE ===============
 // delete the message with id (msgid) in the chat specified in setChatID OR pass the chat id
-uint8_t deleteMessageID(int32_t msgid);
-uint8_t deleteMessageID(int32_t msgid, String id);
+uint8_t deleteMessage(int32_t msgid);
+uint8_t deleteMessage(int32_t msgid, String id);
 
 
-// ============ EDIT ==============
-// edit the message with an offset from the last one (offset) in the chat specified in setChatID
-uint8_t editMessage(int32_t offset, String text);
-
+// ============ EDIT ============
 // edit the message (msgid) in the chat specified in setChatID OR pass the chat id
-uint8_t editMessageID(int32_t msgid, String text);
-uint8_t editMessageID(int32_t msgid, String text, String id);
+uint8_t editMessage(int32_t msgid, String text);
+uint8_t editMessage(int32_t msgid, String text, String id);
 
 
 // ============= REGULAR MENU =============
@@ -169,7 +157,7 @@ uint8_t closeMenuText(String msg, String id);
 
 
 // ============= INLINE MENU =============
-// message (msg) with an inline menu (menu) in the chat/chats specified in setChatID OR pass the id of the chat/chats
+// message (msg) with an inline menu (menu) in the chat/chats specified in setChatID OR pass chat ida/chat
 uint8_t inlineMenu(String msg, String menu);
 uint8_t inlineMenu(String msg, String menu, String id);
 
@@ -182,15 +170,50 @@ uint8_t inlineMenuCallback(String msg, String menu, String cbck, String id);
 
 // ======= EDIT INLINE MENU WITH CALLBACK =======
 // edit the menu (msgid) with text (menu) in the chat specified in setChatID OR pass the chat id
-uint8_t editMenuID(int32_t msgid, String menu, String cback);
-uint8_t editMenuID(int32_t msgid, String menu, String cback, String id);
+uint8_t editMenu(int32_t msgid, String menu, String cback);
+uint8_t editMenu(int32_t msgid, String menu, String cback, String id);
+
+
+// ============== GROUP ==============
+// for all group commands, the bot must be an admin in the chat!
+
+// set the group name in the chat specified in setChatID OR pass the chat id
+uint8_t setChatTitle(String& title);
+uint8_t setChatTitle(String& title, String& id);
+
+// set the description of the group in the chat specified in setChatID OR pass the chat id
+uint8_t setChatDescription(String& description);
+uint8_t setChatDescription(String& description, String& id);
+
+// pin message with ID msgid in chat specified in setChatID OR pass chat id
+uint8_t pinMessage(int32_t msgid);
+uint8_t pinMessage(int32_t msgid, const String& id);
+
+// unpin the message with ID msgid in the chat specified in setChatID OR pass the chat id
+uint8_t unpinMessage(int32_t msgid);
+uint8_t unpinMessage(int32_t msgid, const String& id);
+
+// unpin all messages in the chat specified in setChatID OR pass the chat id
+uint8_t unpinAll();
+uint8_t unpinAll(const String& id);
+
+
+// ============= API COMMAND ==============
+// send an API command in the chat specified in setChatID OR pass the chat id (the id will be added to the command itself)
+// (command example: "/sendSticker?sticker=123456")
+uint8_t sendCommand(String&cmd);
+uint8_t sendCommand(String& cmd, String& id);
 
 
 // ================ SERVICE ===============
+int32_t lastBotMsg(); // ID of the last message sent by the bot
+int32_t lastUsrMsg(); // ID of the last message sent by the user
+String chatIDs; // the string specified in setChatID, for debugging and editing the list
+
 uint8_t sendRequest(String&req); // send request (https://api.telegram.org/bot...)
 void autoIncrement(boolean incr); // auto increment messages (enabled by default)
 void incrementID(uint8_tval); // manually increment ID by val
-String chatIDs; // the string specified in setChatID, for debugging and editing the list
+
 
 // ================ TIME =================
 FB_Time getTime(int16_t gmt); // get the current time, specify the time zone (for example, Moscow 3) in hours or minutes
@@ -207,6 +230,7 @@ uint8_tdayWeek; // day of the week (Mon..Sun 1..7)
 uint16_t year; // year
 StringtimeString(); // get the time string in HH:MM:SS format
 String dateString(); // get date string in DD.MM.YYYY format
+
 
 // =============== STATUS ================
 // Many functions return status:
@@ -229,13 +253,14 @@ String dateString(); // get date string in DD.MM.YYYY format
 ## Usage
 
 ### Ticker
-To poll incoming messages, you need to call `tick()` in the main loop of the program `loop()`, polling occurs according to the built-in timer.
+To poll incoming messages, you need to call `tick()` in the main loop of the program `loop()`, polling occursIT on the built-in timer.
 By default, the polling period is set to 3500 milliseconds. You can poll more often (change via `setPeriod()`), but Telegram is sometimes stupid and
 with frequent polling, the query can run ~3 seconds instead of 60 milliseconds! During this time, the program "hangs" inside `tick()`.
 With a period of 3500 ms this does not happen, so I made it the default.
 
 ### ID of the chat(s)
-Set via `setChatID()`, where you can pass a single ID or several at once, separated by commas: `setChatID("id1,id2,id3")`
+- Set via `setChatID()`, where you can pass a single ID or several at once separated by commas: `setChatID("id1,id2,id3")`
+- You can edit the `chatIDs` string directly as a class member
 
 ### Parsing messages
 Messages are automatically read in `tick()`, when a new message arrives, the specified handler function is called. But there are options here:
@@ -250,8 +275,8 @@ The handler is attached using `attach(FB_msg&)` or `attach(String&, String&)` (d
     - `int32_t ID` - message ID
     - `String usrID` - user ID
     - `String first_name` - username
-    - `String last_name` - user last name
-    - `String username` - user's nickname
+    - `String last_name` - user's last name (may not be)
+    - `String username` - user's nickname (may not be)
     - `String chatID` - chat ID
     - `String text` - message text
     - `bool query` - query flag
@@ -278,9 +303,17 @@ void loop() {
 }
 ```
 
+### Accessing messages
+To edit and delete messages and menus, and to pin messages, you need to know the message ID.
+- ID of the incoming message is sent to the incoming message handler
+- Last received message ID can be obtained from `lastUsrMsg()`
+- The ID of the last message sent by the bot can be obtained from `lastBotMsg()`
+
+Be careful with the chat ID, all chats have their own numbering of message IDs!
+
 ### Send stickers
 To send a sticker, you need to know the sticker ID. Send the desired sticker to the *@idstickerbot* bot, it will send the sticker ID.
-This ID will need to be passed to the `sendSticker()` function.
+This ID must be passed to the `sendSticker()` function.
 
 ### Menu formatting
 To send the menu, a string with button names and special formatting is used:
@@ -320,7 +353,7 @@ Pressing the button **sends the text from the button**.
 Menu in the message. The callback allows you to set a unique text for each button, which will be sent to the bot instead of the text from the button.
 The list of callbacks is listed comma-separated in order:
 ```cpp
-String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
+String menu1 = F("Menu 1 \t Menu 2 \t Menu 3\n Back");
 String cback1 = F("action1,action2,action3,back");
 bot.inlineMenuCallback("Menu 1", menu1, cback1);
 ```
@@ -381,7 +414,7 @@ In the incoming message handler, the `FB_msg` structure has a `unix` field that 
 To translate into a more readable format, we act according to the scheme described above:
 ```cpp
 void newMsg(FB_msg& msg) {
-  FB_Time t(msg.unix, 3); // passed unix and timezone
+  FB_Time t(msg.unix, 3); // passed unix and time zone
   Serial.print(t.timeString());
   Serial print(' ');
   Serial.println(t.dateString());
@@ -437,8 +470,7 @@ FB_Time t(bot.getUnix(), 3);
     - Added editing messages and a bunch of everything
 
 - v2.1:
-    - More optimization
-    - Added text formatting (markdown, html)
+    - More optimization- Added text formatting (markdown, html)
     - Added a reply to the message
 
 - v2.2:
@@ -453,6 +485,7 @@ FB_Time t(bot.getUnix(), 3);
 - v2.7: Added sending stickers
 - v2.8: Removed extra serial output, GMT can be in minutes
 - v2.9: Parsing bug fixed, parsing speeded up, formatted time output added, last name and message time added
+- v2.10: Added functions for changing the name and description of the chat, pinning and unpinning messages. Removed edit/deleteMessageID, editMenuID
 
 <a id="feedback"></a>
 ## Bugs and feedback
