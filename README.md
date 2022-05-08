@@ -103,10 +103,14 @@ uint8_t tickManual();                           // ручная проверка
 uint8_t tick();                                 // проверка обновлений по таймеру
 
 
-// ============== ОТПРАВКА ===============
+// ============== СООБЩЕНИЯ ==============
 // отправить сообщение в указанный в setChatID чат/чаты ИЛИ передать id чата
 uint8_t sendMessage(String msg);
 uint8_t sendMessage(String msg, String id);
+
+// редактировать сообщение (msgid) в указанном в setChatID чате ИЛИ передать id чата
+uint8_t editMessage(int32_t msgid, String text);
+uint8_t editMessage(int32_t msgid, String text, String id);
 
 // ответить на сообщение с id (replyID) в указанный в setChatID чат ИЛИ указать чат
 uint8_t replyMessage(String msg, int32_t replyID);
@@ -122,14 +126,9 @@ uint8_t answer(String text, bool alert = false);
 
 // =============== УДАЛЕНИЕ ===============
 // удалить сообщение с id (msgid) в указанном в setChatID чате ИЛИ передать id чата
+// удаляет любые типы сообщений (текст, стикер, инлайн меню)
 uint8_t deleteMessage(int32_t msgid);
 uint8_t deleteMessage(int32_t msgid, String id);
-
-
-// ============ РЕДАКТИРОВАНИЕ ============
-// редактировать сообщение (msgid) в указанном в setChatID чате ИЛИ передать id чата
-uint8_t editMessage(int32_t msgid, String text);
-uint8_t editMessage(int32_t msgid, String text, String id);
 
 
 // ============= ОБЫЧНОЕ МЕНЮ =============
@@ -165,17 +164,19 @@ uint8_t closeMenuText(String msg, String id);
 uint8_t inlineMenu(String msg, String menu);
 uint8_t inlineMenu(String msg, String menu, String id);
 
+// редактировать меню (msgid) текстом (menu) в указанном в setChatID чате ИЛИ передать id чата
+uint8_t editMenu(int32_t msgid, String menu);
+uint8_t editMenu(int32_t msgid, String menu, String id);
+
 
 // ======= ИНЛАЙН МЕНЮ С КОЛЛБЭКОМ =======
 // сообщение (msg) с инлайн меню (menu) и коллбэком (cbck) в указанном в setChatID чате/чатах ИЛИ передать id чата/чатов
 uint8_t inlineMenuCallback(String msg, String menu, String cbck);
 uint8_t inlineMenuCallback(String msg, String menu, String cbck, String id);
 
-
-// ======= РЕДАКТИРОВАТЬ ИНЛАЙН МЕНЮ С КОЛЛБЭКОМ =======
-// редактировать меню (msgid) текстом (menu) в указанном в setChatID чате ИЛИ передать id чата
-uint8_t editMenu(int32_t msgid, String menu, String cback);
-uint8_t editMenu(int32_t msgid, String menu, String cback, String id);
+// редактировать меню (msgid) текстом (menu) и коллбэком (cback) в указанном в setChatID чате ИЛИ передать id чата
+uint8_t editMenuCallback(int32_t msgid, String menu, String cback);
+uint8_t editMenuCallback(int32_t msgid, String menu, String cback, String id);
 
 
 // ============== ГРУППОВЫЕ ==============
@@ -191,15 +192,15 @@ uint8_t setChatDescription(String& description, String& id);
 
 // закрепить сообщение с ID msgid в указанном в setChatID чате ИЛИ передать id чата
 uint8_t pinMessage(int32_t msgid);
-uint8_t pinMessage(int32_t msgid, const String& id);
+uint8_t pinMessage(int32_t msgid, String& id);
 
 // открепить сообщение с ID msgid в указанном в setChatID чате ИЛИ передать id чата
 uint8_t unpinMessage(int32_t msgid);
-uint8_t unpinMessage(int32_t msgid, const String& id);
+uint8_t unpinMessage(int32_t msgid, String& id);
 
 // открепить все сообщения в указанном в setChatID чате ИЛИ передать id чата
 uint8_t unpinAll();
-uint8_t unpinAll(const String& id);
+uint8_t unpinAll(String& id);
 
 
 // ============= КОМАНДА API =============
