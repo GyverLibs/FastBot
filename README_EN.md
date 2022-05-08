@@ -99,10 +99,14 @@ uint8_t tickManual(); // manual check for updates
 uint8_t tick(); // check for updates by timer
 
 
-// ============== SENDING ================
+// ============== MESSAGES ==============
 // send a message to the chat/chats specified in setChatID OR pass the chat id
 uint8_t sendMessage(String msg);
 uint8_t sendMessage(String msg, String id);
+
+// edit the message (msgid) in the chat specified in setChatID OR pass the chat id
+uint8_t editMessage(int32_t msgid, String text);
+uint8_t editMessage(int32_t msgid, String text, String id);
 
 // reply to a message with id (replyID) in the chat specified in setChatID OR specify a chat
 uint8_t replyMessage(String msg, int32_t replyID);
@@ -118,14 +122,9 @@ uint8_t answer(String text, bool alert = false);
 
 // =============== DELETE ===============
 // delete the message with id (msgid) in the chat specified in setChatID OR pass the chat id
+// deletes any type of messages (text, sticker, inline menu)
 uint8_t deleteMessage(int32_t msgid);
 uint8_t deleteMessage(int32_t msgid, String id);
-
-
-// ============ EDIT ============
-// edit the message (msgid) in the chat specified in setChatID OR pass the chat id
-uint8_t editMessage(int32_t msgid, String text);
-uint8_t editMessage(int32_t msgid, String text, String id);
 
 
 // ============= REGULAR MENU =============
@@ -157,9 +156,13 @@ uint8_t closeMenuText(String msg, String id);
 
 
 // ============= INLINE MENU =============
-// message (msg) with an inline menu (menu) in the chat/chats specified in setChatID OR pass chat ida/chat
+// message (msg) with an inline menu (menu) in the chat(s) specified in setChatID ORsend chat/chat id
 uint8_t inlineMenu(String msg, String menu);
 uint8_t inlineMenu(String msg, String menu, String id);
+
+// edit the menu (msgid) with text (menu) in the chat specified in setChatID OR pass the chat id
+uint8_t editMenu(int32_t msgid, String menu);
+uint8_t editMenu(int32_t msgid, String menu, String id);
 
 
 // ======= INLINE MENU WITH A CALLBACK =======
@@ -167,11 +170,9 @@ uint8_t inlineMenu(String msg, String menu, String id);
 uint8_t inlineMenuCallback(String msg, String menu, String cbck);
 uint8_t inlineMenuCallback(String msg, String menu, String cbck, String id);
 
-
-// ======= EDIT INLINE MENU WITH CALLBACK =======
-// edit the menu (msgid) with text (menu) in the chat specified in setChatID OR pass the chat id
-uint8_t editMenu(int32_t msgid, String menu, String cback);
-uint8_t editMenu(int32_t msgid, String menu, String cback, String id);
+// edit the menu (msgid) with text (menu) and callback (cback) in the chat specified in setChatID OR pass the chat id
+uint8_t editMenuCallback(int32_t msgid, String menu, String cback);
+uint8_t editMenuCallback(int32_t msgid, String menu, String cback, String id);
 
 
 // ============== GROUP ==============
@@ -187,15 +188,15 @@ uint8_t setChatDescription(String& description, String& id);
 
 // pin message with ID msgid in chat specified in setChatID OR pass chat id
 uint8_t pinMessage(int32_t msgid);
-uint8_t pinMessage(int32_t msgid, const String& id);
+uint8_t pinMessage(int32_t msgid, String& id);
 
 // unpin the message with ID msgid in the chat specified in setChatID OR pass the chat id
 uint8_t unpinMessage(int32_t msgid);
-uint8_t unpinMessage(int32_t msgid, const String& id);
+uint8_t unpinMessage(int32_t msgid, String& id);
 
 // unpin all messages in the chat specified in setChatID OR pass the chat id
 uint8_t unpinAll();
-uint8_t unpinAll(const String& id);
+uint8_t unpinAll(String& id);
 
 
 // ============= API COMMAND ==============
@@ -246,14 +247,14 @@ String dateString(); // get date string in DD.MM.YYYY format
 // ========== DEFINE SETTINGS ==========
 // declare BEFORE linking the library
 #define FB_NO_UNICODE // disable Unicode conversion for incoming messages (slightly speed up the program)
-#define FB_NO_URLENCODE // disable urlencode conversion for outgoing messages (slightly speeds up the program)
+#define FB_NO_URLENCODE // disable urlencode conversion for outgoing messages (slightlyCranberries will speed up the program)
 ```
 
 <a id="usage"></a>
 ## Usage
 
 ### Ticker
-To poll incoming messages, you need to call `tick()` in the main loop of the program `loop()`, polling occursIT on the built-in timer.
+To poll incoming messages, you need to call `tick()` in the main loop of the program `loop()`, polling occurs according to the built-in timer.
 By default, the polling period is set to 3500 milliseconds. You can poll more often (change via `setPeriod()`), but Telegram is sometimes stupid and
 with frequent polling, the query can run ~3 seconds instead of 60 milliseconds! During this time, the program "hangs" inside `tick()`.
 With a period of 3500 ms this does not happen, so I made it the default.
@@ -350,10 +351,10 @@ inlineMenu("MyMenu", "Menu1 \t Menu2 \t Menu3 \n Menu4");
 Pressing the button **sends the text from the button**.
 
 ### Inline menu with callback
-Menu in the message. The callback allows you to set a unique text for each button, which will be sent to the bot instead of the text from the button.
+Menu in the message. The callback allows you to set each button to a uniqueand the text that will be sent to the bot instead of the text from the button.
 The list of callbacks is listed comma-separated in order:
 ```cpp
-String menu1 = F("Menu 1 \t Menu 2 \t Menu 3\n Back");
+String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
 String cback1 = F("action1,action2,action3,back");
 bot.inlineMenuCallback("Menu 1", menu1, cback1);
 ```
@@ -463,14 +464,15 @@ FB_Time t(bot.getUnix(), 3);
     - Removed at least 3200 ms
     - Added Unicode processing (Russian language, emoji). Thanks to Gleb Zhukov!
     - Extra spaces are removed from the menu, it became easier to work
-    - Support esp32
+    - support esp32
     - Big optimization
     - Added callbacks to inlineMenu
     - Added user ID
     - Added editing messages and a bunch of everything
 
 - v2.1:
-    - More optimization- Added text formatting (markdown, html)
+    - More optimization
+    - Added text formatting (markdown, html)
     - Added a reply to the message
 
 - v2.2:
