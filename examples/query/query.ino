@@ -17,8 +17,8 @@ void setup() {
 }
 
 void newMsg(FB_msg& msg) {
-  if (msg.query) bot.answer("Hello!", true);  // предупреждение
-  //if (msg.query) bot.answer("Hello!");    // подсказка
+  if (msg.query) bot.answer("Hello!", FB_ALERT);  // предупреждение
+  //if (msg.query) bot.answer("Hello!", FB_NOTIF);    // подсказка
 }
 
 void loop() {

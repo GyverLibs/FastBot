@@ -15,12 +15,8 @@ void setup() {
 
 // обработчик сообщений
 void newMsg(FB_msg& msg) {
-  // выводим ID чата, имя юзера и текст сообщения
-  Serial.print(msg.chatID);     // ID чата 
-  Serial.print(", ");
-  Serial.print(msg.username);   // логин
-  Serial.print(", ");
-  Serial.println(msg.text);     // текст
+  // выводим всю информацию о сообщении
+  Serial.println(msg.toString());
 
   // отправить сообщение обратно
   bot.sendMessage(msg.text, msg.chatID);  

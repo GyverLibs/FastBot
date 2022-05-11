@@ -4,17 +4,55 @@ void FB_unicode(String &uStr);
 void FB_urlencode(const String& s, String& dest);
 
 struct FB_msg {
-    int32_t ID;         // ID сообщения
-    String& usrID;      // ID юзера
-    String& first_name; // имя
-    String& last_name;  // фамилия
-    String& username;   // ник
+    String& userID;     // ID юзера
+    String& username;   // ник (в API это first_name)
     String& chatID;     // ID чата
+    int32_t messageID;  // ID сообщения
     String& text;       // текст
+    String& data;       // callback дата
     bool query;         // запрос
     bool& edited;       // сообщение отредактировано
     bool& isBot;        // сообщение от бота
     uint32_t unix;      // время сообщения
+    
+    // legacy
+    String& usrID;      // ID юзера
+    String& first_name; // имя
+    String& last_name;  // фамилия
+    int32_t ID;         // ID сообщения
+    
+    String toString() {
+        String s;
+        s.reserve(200);
+        s += F("user ID: ");
+        s += userID;
+        s += F(", username: ");
+        s += username;
+        s += '\n';
+        
+        s += F("chat ID: ");
+        s += chatID;
+        s += F(", message ID: ");
+        s += ID;
+        s += '\n';
+        
+        s += F("text: ");
+        s += text;
+        s += F(", data: ");
+        s += data;
+        s += '\n';
+        
+        s += F("query: ");
+        s += query;
+        s += F(", edited: ");
+        s += edited;
+        s += F(", isBot: ");
+        s += isBot;
+        s += F(", unix: ");
+        s += unix;
+        s += '\n';
+        return s;
+    }
 };
 
 struct FB_Time {

@@ -6,13 +6,16 @@
     - Работает на стандартных библиотеках
     - Работает без SSL
     - Оптимизирована для большой нагрузки
-    - Опциональная установка ID чата для общения с ботом
+    - Опциональный белый список ID чатов
     - Проверка обновлений вручную или по таймеру
-    - Отправка/редактирование/ответ на сообщения
-    - Вывод меню вместо клавиатуры
-    - Вывод инлайн меню в сообщении
-    - Поддержка Unicode (другие языки + эмодзи)
-    - Встроенные часы реального времени с синхронизацией от Telegram
+    - Отправка/удаление/редактирование/ответ на сообщения
+    - Отправка стикеров
+    - Вывод меню и инлайн меню (с поддержкой ссылок)
+    - Изменение названия и описания чата
+    - Закрепление/открепление сообщений
+    - Поддержка Unicode (другие языки + эмодзи) для входящих сообщений
+    - Встроенный urlencode для исходящих сообщений
+    - Встроенные часы реального времени с синхронизацией от сервера Telegram
     
     AlexGyver, alex@alexgyver.ru
     https://alexgyver.ru/
@@ -65,10 +68,19 @@
     v2.8: Убрал лишний вывод в сериал, GMT можно в минутах
     v2.9: Исправлена бага в парсинге, парсинг ускорен, добавлен вывод форматированного времени, добавлена фамилия и время сообщения
     v2.10: Добавлены функции для изменения названия и описания чата, закрепления и открепления сообщений. Убраны edit/deleteMessageID, editMenuID
+    v2.11: 
+        - Оптимизация, исправление багов
+        - Callback data теперь парсится отдельно в data
+        - Переделана работа с callback
+        - Добавлен toString() для FB_msg для отладки
+        - В callback добавлена обработка url адресов
+        - Убраны first_name и last_name (с сохранением легаси)
+        - usrID и ID переименованы в userID и messageID (с сохранением легаси)
+        - Окончательно убран старый обработчик входящих сообщений
 */
 
 /*
-Статусы tick:
+    Статусы tick:
     0 - ожидание
     1 - ОК
     2 - Переполнен по ovf
@@ -76,6 +88,7 @@
     4 - Ошибка подключения
     5 - не задан chat ID
     6 - множественная отправка, статус неизвестен
+    7 - не подключен обработчик
 */
 
 #ifndef _FastBot_h
@@ -84,6 +97,9 @@
 #define FB_TEXT 0
 #define FB_MARKDOWN 1
 #define FB_HTML 2
+
+#define FB_NOTIF 0
+#define FB_ALERT 1
 
 #include <Arduino.h>
 #ifdef ESP8266
@@ -117,7 +133,7 @@ public:
         _prd = period;
         setBufferSizes(512, 512);
         _FB_client.setInsecure();
-        //_FB_httpGet.setTimeout(500);
+        //_FB_httpGet.setTimeout(1000);
     }
     
     // ===================== НАСТРОЙКИ =====================
@@ -153,18 +169,13 @@ public:
     }
 
     // подключение обработчика сообщений
-    void attach(void (*handler)(String&, String&)) {
-        _callback = handler;
-    }
-    
     void attach(void (*handler)(FB_msg& msg)) {
-        _callback2 = handler;
+        _callback = handler;
     }
     
     // отключение обработчика сообщений
     void detach() {
         _callback = nullptr;
-        _callback2 = nullptr;
     }
     
     // режим обработки текста: FB_TEXT, FB_MARKDOWN, FB_HTML
@@ -180,6 +191,7 @@ public:
     // ===================== ТИКЕР =====================
     // ручная проверка обновлений
     uint8_t tickManual() {
+        if (!*_callback) return 7;
         uint8_t status = 1;
         String req;
         _addToken(req);
@@ -197,9 +209,11 @@ public:
     
     // проверка обновлений по таймеру
     uint8_t tick() {
+        if (!*_callback) return 7;
         if (millis() - tmr >= _prd) {
+            uint8_t stat = tickManual();
             tmr = millis();
-            return tickManual();
+            return stat;
         }
         return 0;
     }
@@ -349,6 +363,16 @@ public:
     }
     
     // ответить на callback текстом и true - предупреждением
+    uint8_t answer() {
+        if (!_query) return 5;
+        String req;
+        _addToken(req);
+        req += F("/answerCallbackQuery?callback_query_id=");
+        req += *_query;
+        _query = nullptr;
+        return sendRequest(req);
+    }
+    
     uint8_t answer(const String& text, bool alert = false) {
         if (!_query) return 5;
         #ifndef FB_NO_URLENCODE
@@ -364,7 +388,8 @@ public:
         #else
         _addText(req, text);
         #endif
-        if (alert) req += F("&show_alert=true");
+        if (alert) req += F("&show_alert=True");
+        _query = nullptr;
         return sendRequest(req);
     }
     
@@ -585,14 +610,14 @@ public:
         uint8_t status = 1;
         if (_FB_httpReq.begin(_FB_client, req)) {
             if (_FB_httpReq.GET() != HTTP_CODE_OK) status = 3;
-            String msgID;
             const String& answ = _FB_httpReq.getString();
-            int16_t st = 0, end;
-            find(answ, msgID, st, end, F("\"message_id\":"), ',', answ.length());
-            _lastBotMsg = msgID.toInt();
-            String date;
-            if (find(answ, date, st, end, F("\"date\":"), ',', answ.length())) {
-                _unix = date.toInt();
+            int16_t st = 0;
+            String buf;
+            if (find(answ, buf, st, F("\"message_id\":"), ',', answ.length())) {
+                _lastBotMsg = buf.toInt();
+            }
+            if (find(answ, buf, st, F("\"date\":"), ',', answ.length())) {
+                _unix = buf.toInt();
                 _lastUpd = millis();
             }
             _FB_httpReq.end();
@@ -682,22 +707,23 @@ private:
     void _addInlineButton(String& str, const String& text, const String& cbck) {
         str += F("\"text\":\"");
         str += text;
-        str += F("\",\"callback_data\":\"");
+        if (cbck.startsWith(F("http"))) str += F("\",\"url\":\"");
+        else str += F("\",\"callback_data\":\"");
         str += cbck;
         str += '\"';
     }
     
     // ======================== PARSING =========================
-    bool find(const String& str, String& dest, int16_t& start, int16_t& end, const String& from, char to, int16_t pos) {
+    bool find(const String& str, String& dest, int16_t& start, const String& from, char to, int16_t max) {
         int strPos = str.indexOf(from, start);
-        if (strPos < 0 || strPos > pos) return 0;
+        if (strPos < 0 || strPos > max) return 0;
         start = strPos + from.length();
-        end = start;
+        int16_t end = start;
         while (1) {
             end = str.indexOf(to, end);
             if (str[end - 1] != '\\') break;
             end++;
-            if (end >= pos) return 0;
+            if (end >= max) return 0;
         }
         dest = str.substring(start, end);
         start = end;
@@ -711,103 +737,99 @@ private:
 
     uint8_t parse(const String& str, uint16_t size) {
         if (!str.startsWith(F("{\"ok\":true"))) return 3;       // ошибка запроса (неправильный токен итд)
+        int16_t IDpos = str.indexOf(F("{\"update_id\":"), 0);   // первая позиция ключа update_id
         if (size > _ovf) {                                      // переполнен
-            int IDpos = str.indexOf(F("{\"update_id\":"), 0);
             if (IDpos > 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt();
             ID++;
             return 2;
         }
-
-        int16_t IDpos = str.indexOf(F("{\"update_id\":"), 0);   // первая позиция ключа update_id
         int16_t counter = 0;
         while (true) {
-            if (IDpos > 0 && IDpos < (int16_t)str.length()) {           // если есть что разбирать
-                if (ID == 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt() + 1;   // холодный запуск, ищем ID
-                else counter++;                                                                     // иначе считаем пакеты
-                int16_t textPos = IDpos;                                // стартовая позиция для поиска
-                int16_t endPos;
-                IDpos = str.indexOf(F("{\"update_id\":"), IDpos + 1);   // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
-                if (IDpos == -1) IDpos = str.length();                  // если конец пакета - для удобства считаем что позиция ID в конце
-                
-                String query;
-                find(str, query, textPos, endPos, F("query\":{\"id\":\""), ',', IDpos);
+            if (IDpos < 0 || IDpos == (int16_t)str.length()) break;
+            if (ID == 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt() + 1;   // холодный запуск, ищем ID
+            else counter++;                                                                     // иначе считаем пакеты
+            
+            int16_t textPos = IDpos;                                // стартовая позиция для поиска
+            IDpos = str.indexOf(F("{\"update_id\":"), IDpos + 1);   // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
+            if (IDpos < 0) IDpos = str.length();                    // если конец пакета - для удобства считаем что позиция ID в конце
+            
+            String query;
+            int16_t queryEnd = 0;
+            if (find(str, query, textPos, F("\"callback_query\":{\"id\":\""), ',', IDpos)) {
                 _query = &query;
-                
-                bool edited = find(str, F("\"edited_message\":"), textPos, IDpos);
-                
-                String message_id;
-                if (!find(str, message_id, textPos, endPos, F("\"message_id\":"), ',', IDpos)) continue;
-                _lastUsrMsg = message_id.toInt();
-                
-                String usrID;
-                if (!find(str, usrID, textPos, endPos, F("\"id\":"), ',', IDpos)) continue;
-                
-                bool is_bot = find(str, F("\"is_bot\":true"), textPos, IDpos);
-                
-                String first_name;
-                find(str, first_name, textPos, endPos, F("\"first_name\":\""), '\"', IDpos);
-                
-                String last_name;
-                find(str, last_name, textPos, endPos, F("\"last_name\":\""), '\"', IDpos);
-
-                String username;
-                find(str, username, textPos, endPos, F("\"username\":\""), '\"', IDpos);
-                
-                String chatID;
-                if (!find(str, chatID, textPos, endPos, F("\"chat\":{\"id\":"), ',', IDpos)) continue;
-                if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;  // проверка на ID чата
-                
-                String date;
-                find(str, date, textPos, endPos, F("\"date\":"), ',', IDpos);
-                
-                if (clrSrv) {
-                    if (find(str, F("\"new_chat_title\""), textPos, IDpos) ||
-                        find(str, F("\"pinned_message\""), textPos, IDpos)) {
-                            deleteMessage(message_id.toInt(), chatID);
-                            continue;
-                    }
+                queryEnd = textPos;
+            } else _query = nullptr;
+            
+            bool edited = find(str, F("\"edited_message\":"), textPos, IDpos);
+            
+            String messageID;
+            find(str, messageID, textPos, F("\"message_id\":"), ',', IDpos);
+            _lastUsrMsg = messageID.toInt();
+            
+            if (queryEnd) textPos = queryEnd;   // возврат на query id, т.к. отправитель указан там
+            String userID;
+            find(str, userID, textPos, F("\"id\":"), ',', IDpos);
+            
+            bool is_bot = find(str, F("\"is_bot\":true"), textPos, IDpos);
+            
+            String first_name;
+            find(str, first_name, textPos, F("\"first_name\":\""), '\"', IDpos);
+            
+            String chatID;
+            find(str, chatID, textPos, F("\"chat\":{\"id\":"), ',', IDpos);
+            
+            if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;  // проверка на ID чата
+            
+            String date;
+            find(str, date, textPos, F("\"date\":"), ',', IDpos);
+            
+            // удаление сервисных сообщений
+            if (clrSrv) {
+                if (find(str, F("\"new_chat_title\""), textPos, IDpos) ||
+                    find(str, F("\"pinned_message\""), textPos, IDpos)) {
+                        deleteMessage(_lastUsrMsg, chatID);
+                        continue;
                 }
+            }
+            
+            String text;
+            find(str, text, textPos, F("\"text\":\""), '\"', IDpos);
+            
+            String data;
+            find(str, data, textPos, F("\"data\":\""), '\"', IDpos);
+
+            #ifndef FB_NO_UNICODE
+            FB_unicode(first_name);
+            FB_unicode(text);
+            #endif
+
+            FB_msg msg = (FB_msg) {
+                userID,
+                first_name,
+                chatID,
+                _lastUsrMsg,
+                text,
+                data,
+                (bool)_query,
+                edited,
+                is_bot,
+                (uint32_t)date.toInt(),
                 
-                String text;
-                bool data = find(str, F("\"data\":\""), textPos, IDpos);
-                if (data) {
-                    find(str, text, textPos, endPos, F("\"data\":\""), '\"', IDpos);
-                } else {
-                    if (!find(str, text, textPos, endPos, F("\"text\":\""), '\"', IDpos)) continue;
-                }
-
-                #ifndef FB_NO_UNICODE
-                FB_unicode(first_name);
-                FB_unicode(last_name);
-                FB_unicode(username);
-                FB_unicode(text);
-                #endif
-
-                FB_msg message = (FB_msg) {
-                    _lastUsrMsg,
-                    usrID,
-                    first_name,
-                    last_name,
-                    username,
-                    chatID,
-                    text,
-                    (query.length() > 0),
-                    edited,
-                    is_bot,
-                    (uint32_t)date.toInt()
-                };
-                if (*_callback2) _callback2(message);
-                if (*_callback) _callback(username, text);
-                _query = nullptr;
-                yield();
-            } else break;   // IDpos > 0
+                // legacy
+                userID,
+                first_name,
+                first_name,
+                _lastUsrMsg,
+            };
+            _callback(msg);
+            if (_query) answer();   // отвечаем на коллбэк, если юзер не ответил
+            yield();
         }
         if (_incr) ID += counter;
         return 1;
     }
 
-    void (*_callback)(String& name, String& text) = nullptr;
-    void (*_callback2)(FB_msg& msg) = nullptr;
+    void (*_callback)(FB_msg& msg) = nullptr;
     String _token;
     String* _query = nullptr;
     uint16_t _ovf, _prd, _limit;

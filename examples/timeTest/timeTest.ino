@@ -13,8 +13,8 @@ void setup() {
 }
 
 void newMsg(FB_msg& msg) {
-  Serial.print(msg.text);
-  Serial.print(", ");
+  // выводим всю информацию о сообщении
+  Serial.println(msg.toString());
   
   FB_Time t(msg.unix, 3);
   Serial.print(t.timeString());

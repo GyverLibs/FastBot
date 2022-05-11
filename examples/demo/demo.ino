@@ -34,20 +34,10 @@ void setup() {
 
 // обработчик сообщений
 void newMsg(FB_msg& msg) {
-  // выводим ID чата, имя юзера и текст сообщения
-  Serial.print(msg.chatID);     // ID чата
+  // выводим имя юзера и текст сообщения
+  Serial.print(msg.username);
   Serial.print(", ");
-  Serial.print(msg.ID);         // ID сообщения
-  Serial.print(", ");
-  Serial.print(msg.first_name); // имя
-  Serial.print(", ");
-  Serial.print(msg.last_name);  // фамилия
-  Serial.print(", ");
-  Serial.print(msg.username);   // логин
-  Serial.print(", ");
-  Serial.print(msg.usrID);      // ID юзера
-  Serial.print(", ");
-  Serial.println(msg.text);     // текст
+  Serial.println(msg.text);
 }
 
 void loop() {

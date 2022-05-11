@@ -16,11 +16,8 @@ void setup() {
 }
 
 void newMsg(FB_msg& msg) {
-  Serial.print(msg.chatID);     // ID чата 
-  Serial.print(", ");
-  Serial.print(msg.username);   // логин
-  Serial.print(", ");
-  Serial.println(msg.text);     // текст
+  // выводим всю информацию о сообщении
+  Serial.println(msg.toString());
 
   // редактируем последнее сообщение от бота
   bot.editMessage(bot.lastBotMsg(), msg.text);

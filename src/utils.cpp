@@ -1,12 +1,14 @@
 #include "utils.h"
 
+// упрощённый urlencode (до 38 ASCII + space)
+// по хорошему нужно пропускать только a-Z, 0-9 и -_.!~*'()
 void FB_urlencode(const String& s, String& dest) {
     dest.reserve(s.length() + 10);
     char c;
     for (uint16_t i = 0; i < s.length(); i++) {
         c = s[i];
         if (c == ' ') dest += '+';
-        else if (c < 38 || c == '+') {
+        else if (c <= 38 || c == '+') {
             dest += '%';
             dest += (char)((c >> 4) + (((c >> 4) > 9) ? 87 : 48));
             dest += (char)((c & 0xF) + (((c & 0xF) > 9) ? 87 : 48));
