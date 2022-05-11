@@ -5,11 +5,13 @@ Very simple and fast library for telegram bot on esp8266/esp32
 - Works on standard libraries
 - Works without SSL
 - Optimized for heavy load
-- Optional setting of the chat ID to communicate with the bot
+- Optional whitelist of chat IDs
 - Check for updates manually or by timer
-- Sending/Editing/Replying to messages
-- Show menu instead of keyboard
-- Display inline menu in message
+- Send/delete/edit/reply messages
+- Send stickers
+- Menu output and inline menu (with link support)
+- Change the name and description of the chat
+- Pin/unpin messages
 - Unicode support (other languages ​​+ emoji) for incoming messages
 - Built-in urlencode for outgoing messages
 - Built-in real time clock with synchronization from the Telegram server
@@ -23,7 +25,7 @@ Detailed tutorials on working with the Telegram bot using this library can be fo
 ## Comparison with Universal-Arduino-Telegram-Bot
 [Universal-Arduino-Telegram-Bot](https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot)
 
-For comparison, a minimal example was used with sending a message to the chat and outputting incoming messages to the series:
+For comparison, we used a minimal example with sending a message to the chat and outputting incoming messages to the series:
 - **send** - send a message to the chat
 - **update** - check incoming messages
 - **free heap** - amount of free RAM while the program is running
@@ -69,7 +71,7 @@ FastBot bot(token, limit, threshold);
 FastBot bot(token, limit, threshold, period);
 // token - unique bot code, taken from BotFather
 // limit - the number of messages received from one request (default 10)
-// threshold - the number of characters at which the API request will be considered too large and will be skipped (by default. 10000)
+// threshold - the number of characters at whichAPI request will be considered too large and will be skipped (default 10000)
 // period - bot automatic polling period in ms (default 3500)
 ```
 
@@ -78,7 +80,7 @@ FastBot bot(token, limit, threshold, period);
 ```cpp
 // ============== SETTINGS ==============
 void setToken(String token); // change/set bot token
-void setChatID(String chatID); // set the chat ID. Multiple separated by commas ("id1,id2,id3")
+void setChatID(String chatID); // setting the chat ID (white list), optional. Multiple separated by commas ("id1,id2,id3")
 void setPeriod(int period); // polling period in ms (default 3500)
 void setLimit(int limit); // max number of messages per request
 void setOvf(int ovf); // max number of characters per request (flood protection)
@@ -95,8 +97,8 @@ void detach(); // disable message handler
 
 
 // ================ TICKER ================
-uint8_t tickManual(); // manual check for updates
 uint8_t tick(); // check for updates by timer
+uint8_t tickManual(); // manual check for updates
 
 
 // ============== MESSAGES ==============
@@ -116,8 +118,8 @@ uint8_t replyMessage(String msg, int32_t replyID, String id);
 uint8_t sendSticker(String stickerID);
 uint8_t sendSticker(String stickerID, String id);
 
-// respond to callback with text (text) and mode (alert): true - warning, false - hint
-uint8_t answer(String text, bool alert = false);
+// reply to callback with text (text) and mode (alert): FB_NOTIF - chat notification, FB_ALERT - window with OK button
+uint8_t answer(String text, bool alert);
 
 
 // =============== DELETE ===============
@@ -155,8 +157,8 @@ uint8_t closeMenuText(String msg);
 uint8_t closeMenuText(String msg, String id);
 
 
-// ============= INLINE MENU =============
-// message (msg) with an inline menu (menu) in the chat(s) specified in setChatID ORsend chat/chat id
+// =====Cranberries ======== INLINE MENU =============
+// message (msg) with an inline menu (menu) in the chat/chats specified in setChatID OR pass the id of the chat/chats
 uint8_t inlineMenu(String msg, String menu);
 uint8_t inlineMenu(String msg, String menu, String id);
 
@@ -242,61 +244,71 @@ String dateString(); // get date string in DD.MM.YYYY format
 // 4 - Connection error
 // 5 - chat ID not set
 // 6 - multiple send, status unknown
+// 7 - handler not connected
 
 
 // ========== DEFINE SETTINGS ==========
 // declare BEFORE linking the library
-#define FB_NO_UNICODE // disable Unicode conversion for incoming messages (slightly speed up the program)
-#define FB_NO_URLENCODE // disable urlencode conversion for outgoing messages (slightlyCranberries will speed up the program)
+#define FB_NO_UNICODE // disable U conversionКлюква nicode для входящих сообщений (чуть ускорит программу)
+#define FB_NO_URLENCODE // отключить конвертацию urlencode для исходящих сообщений (чуть ускорит программу)
 ```
 
 <a id="usage"></a>
-## Usage
+## Использование
+### ID чата/чатов
+В библиотеке реализован необязательный "белый список" ID чатов, в которых работает бот. По умолчанию отключен.
+- Устанавливается через `setChatID()`, куда можно передать одиночный ID или сразу несколько через запятую: `setChatID("id1,id2,id3")`
+- Можно редактировать строку `chatIDs` напрямую как член класса
+- Все функции отправки будут отправлять данные в заданный чат/чаты, если не указать его вручную в функции
 
-### Ticker
-To poll incoming messages, you need to call `tick()` in the main loop of the program `loop()`, polling occurs according to the built-in timer.
-By default, the polling period is set to 3500 milliseconds. You can poll more often (change via `setPeriod()`), but Telegram is sometimes stupid and
-with frequent polling, the query can run ~3 seconds instead of 60 milliseconds! During this time, the program "hangs" inside `tick()`.
-With a period of 3500 ms this does not happen, so I made it the default.
+### Парсинг сообщений
+Сообщения автоматически читаются в `tick()`, при поступлении нового сообщения вызывается указанная функция-обработчик. Но тут есть варианты:
+- Если задан ID чата/чатов (через `setChatID()`) - происходит автоматическое отсеивание сообщений НЕ из указанных чатов
+- Если ID чата/чатов не задан (через `setChatID()`) - сообщение будет обработано, т.е. вызван обработчик
 
-### ID of the chat(s)
-- Set via `setChatID()`, where you can pass a single ID or several at once separated by commas: `setChatID("id1,id2,id3")`
-- You can edit the `chatIDs` string directly as a class member
+Обработчик подключается при помощи `attach(FB_msg&)`
+- Создаём в скетче свою функцию вида `void функция(FB_msg& сообщение)`
+- Вызываем `attach(функция)`
+- Эта функция будет автоматически вызвана при входящем сообщении, если ID чата совпадают или не настроены
+- Если обработчик не подключен - сообщения не будут опрашиваться!
+- Внутри этой функции можно пользоваться переданной переменной `сообщение`, которая имеет тип `FB_msg` (структура) и содержит в себе:
+    - `String userID` - ID пользователя
+    - `String username` - имя пользователя (в API Telegram это first_name)
+    - `String chatID` - ID чата
+    - `int32_t messageID` - ID сообщения в чате
+    - `String text` - текст сообщения
+    - `String data` - callback дата сообщения (если есть)
+    - `bool query` - запрос
+    - `bool edited` - сообщение отредактировано
+    - `bool isBot` - сообщение от бота
+    - `uint32_t unix` - время сообщения
+    
+С версии 2.11 добавлен метод `toString()`, позволяющий вывести строкой всё содержимое структуры
+```cpp
+  Serial.println(msg.toString())
+```
 
-### Parsing messages
-Messages are automatically read in `tick()`, when a new message arrives, the specified handler function is called. But there are options here:
-- If a chat/chats ID is set (via `setChatID()`) - messages NOT from the specified chats are automatically filtered out
-- If the chat/chats ID is not set (via `setChatID()`) - the message will be processed, i.e. handler called
+### Тикер
+Для опроса входящих сообщений нужно подключить обработчик сообщений и вызывать `tick()` в главном цикле программы `loop()`, опрос происходит по встроенному таймеру. 
+По умолчанию период опроса установлен 3600 миллисекунд. Можно опрашивать чаще (сменить через `setPeriod()`), но Телеграм иногда тупит и 
+при частом опросе запрос может выполняться ~3 секунды вместо 60 миллисекунд! На это время программа "зависает" внутри `tick()`. 
+При периоде ~3600 мс этого не происходит, поэтому я сделал его по умолчанию.
 
-The handler is attached using `attach(FB_msg&)` or `attach(String&, String&)` (deprecated)
-- Create our own function in the sketch like `void function(FB_msg& message)`
-- Call `attach(function)`
-- This function will be automatically called on an incoming message if the chat IDs match or are not configured
-- Inside this function, you can use the passed variable `message`, which has the type `FB_msg` (structure) and contains:
-    - `int32_t ID` - message ID
-    - `String usrID` - user ID
-    - `String first_name` - username
-    - `String last_name` - user's last name (may not be)
-    - `String username` - user's nickname (may not be)
-    - `String chatID` - chat ID
-    - `String text` - message text
-    - `bool query` - query flag
-    - `bool edited` - message edited?
-    - `bool isBot` - message from bot?
-    - `uint32_t unix` - message time in unix format
-
-### Minimal example
+### Минимальный пример
 ```cpp
 void setup() {
-  // connect to WiFi
-  bot.attach(newMsg); // connect the message handler
+  // подключаемся к WiFi
+  bot.attach(newMsg);   // подключаем обработчик сообщений
 }
 
 void newMsg(FB_msg& msg) {
-  // display the username and message text
-  Serial.print(msg.username);
-  Serial.print(", ");
-  Serial.println(msg.text);
+  // выводим имя юзера и текст сообщения
+  //Serial.print(msg.username);
+  //Serial.print(", ");
+  //Serial.println(msg.text);
+  
+  // выводим всю информацию о сообщении
+  Serial.println(msg.toString());
 }
 
 void loop() {
@@ -304,25 +316,27 @@ void loop() {
 }
 ```
 
-### Accessing messages
-To edit and delete messages and menus, and to pin messages, you need to know the message ID.
-- ID of the incoming message is sent to the incoming message handler
-- Last received message ID can be obtained from `lastUsrMsg()`
-- The ID of the last message sent by the bot can be obtained from `lastBotMsg()`
+### Обращение к сообщениям
+Для редактирования и удаления сообщений и меню, а также закрепления сообщений, нужно знать ID сообщения.
+- ID входящего сообщения приходит в обработчик входящих сообщений
+- ID последнего принятого сообщения можно получить из `lastUsrMsg()`
+- ID последнего отправленного ботом сообщения можно получить из `lastBotMsg()`
 
-Be careful with the chat ID, all chats have their own numbering of message IDs!
+Будьте внимательны с ID чата, у всех чатов своя нумерация ID сообщений!
 
-### Send stickers
-To send a sticker, you need to know the sticker ID. Send the desired sticker to the *@idstickerbot* bot, it will send the sticker ID.
-This ID must be passed to the `sendSticker()` function.
+### Отправка стикеров
+Для отправки стикера нужно знать ID стикера. Отправь нужный стикер боту *@idstickerbot*, он пришлёт ID стикера. 
+Этот ID нужно передать в функцию `sendSticker()`.
 
-### Menu formatting
-To send the menu, a string with button names and special formatting is used:
-- `\t` - horizontal separation of buttons
-- `\n` - vertical separation of buttons
-- Extra spaces are cut automatically
+### Меню
+> Примечание: для всех вариантов меню *не производится* url encode. Избегайте символов `#` и `&` или используйте уже закодированный url!
 
-3x1 menu example: `"Menu1 \t Menu2 \t Menu3 \n Menu4"`
+Для отправки меню используется строка с именами кнопок и специальным форматированием:
+- `\t` - горизонтальное разделение кнопок
+- `\n` - вертикальное разделение кнопок
+- Лишние пробелы вырезаются автоматически
+
+Пример меню 3x1: `"Menu1 \t Menu2 \t Cranberries Menu3 \n Menu4"`
 
 Result:
 ```cpp
@@ -340,38 +354,40 @@ Large menu at the bottom of the chat.
 ```cpp
 showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4");
 ```
-Pressing the button **sends the text from the button**.
-> Note: for all menu options *not produced* url encode. Avoid `" % & + \` characters!
+Pressing the button sends the text from the button (the `text` message field).
 
 ### Inline menu
-Menu in the message. Requires a menu name:
+Menu in the message. Requires a menu name.
 ```cpp
 inlineMenu("MyMenu", "Menu1 \t Menu2 \t Menu3 \n Menu4");
 ```
-Pressing the button **sends the text from the button**.
+Pressing the button sends the menu name (the `text` message field) and the text from the button (the `data` message field).
 
 ### Inline menu with callback
-Menu in the message. The callback allows you to set each button to a uniqueand the text that will be sent to the bot instead of the text from the button.
-The list of callbacks is listed comma-separated in order:
+Menu in the message. Allows you to set a unique text for each button, which will be sent by the bot along with the menu name.
+The list of callbacks is listed separated by commas in the order of the menu buttons:
 ```cpp
 String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
 String cback1 = F("action1,action2,action3,back");
 bot.inlineMenuCallback("Menu 1", menu1, cback1);
 ```
-Pressing the button **sends the given text**.
+Clicking the button sends the menu name (the `text` message field) and the specified data (the `data` message field).
+- (Since 2.11) if callback is set as http/https address, button will automatically become **link button**
 
 ### Response to callback
-When you click on the inline menu button, a callback is sent to the bot, the `query` flag will be raised in the message handler.
+When you click on the inline menu button, a callback is sent to the bot, the `query` flag will be raised in the message handler. The Telegram server will wait for a response.
 You can respond to the callback with:
-- `answer(text)` - popup text
-- `answer(text, true)` - window with warning and OK button
+- `answer(text, FB_NOTIF)` - popup notification text
+- `answer(text, FB_ALERT)` - warning window and OK button
 
-Example:
+You need to answer **inside the message handler**! Example:
 ```cpp
 void newMsg(FB_msg& msg) {
   if (msg.query) bot.answer("Hello!", true);
 }
 ```
+
+> If nothing is answered, the library itself will send an empty response and the "timer" on the button will disappear.
 
 ### Time module
 The library has a data type `FB_Time`, which is a structure with fields:
@@ -464,7 +480,7 @@ FB_Time t(bot.getUnix(), 3);
     - Removed at least 3200 ms
     - Added Unicode processing (Russian language, emoji). Thanks to Gleb Zhukov!
     - Extra spaces are removed from the menu, it became easier to work
-    - support esp32
+    - Support esp32
     - Big optimization
     - Added callbacks to inlineMenu
     - Added user ID
@@ -487,8 +503,17 @@ FB_Time t(bot.getUnix(), 3);
 - v2.7: Added sending stickers
 - v2.8: Removed extra serial output, GMT can be in minutes
 - v2.9: Parsing bug fixed, parsing speeded up, formatted time output added, last name and message time added
-- v2.10: Added functions for changing the name and description of the chat, pinning and unpinning messages. Removed edit/deleteMessageID, editMenuID
-
+- v2.10: Added functions to change the name and description of the chat, pin and unpin messages. Removed edit/deleteMessageID, editMenuID
+- v2.11:
+    - Optimization, bug fixes
+    - Callback data is now parsed separately in data
+    - Redesigned work with callback
+    - Added toString() for FB_msg for debugging
+    - Added processing of url addresses in callback
+    - Removed first_name and last_name (preserving legacy)
+    - usrID and ID renamed to userID and messageID (preserving legacy)
+    - Completely removed the old incoming message handler
+    
 <a id="feedback"></a>
 ## Bugs and feedback
 When you find bugs, create an **Issue**, or better, immediately write to the mail [alex@alexgyver.ru](mailto:alex@alexgyver.ru)
