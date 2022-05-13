@@ -125,13 +125,16 @@ static HTTPClient _FB_httpGet;
 class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
-    FastBot(String token = "") {
+    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 0, uint16_t period = 3600) {
         _token.reserve(46);
         chatIDs.reserve(10);
         _token = token;
+        _limit = limit;
+        _ovf = ovf;
+        _prd = period;
         setBufferSizes(512, 512);
         _FB_client.setInsecure();
-        //_FB_httpGet.setTimeout(1000);
+        //_FB_httpGet.setTimeout(500);
     }
     
     // ===================== НАСТРОЙКИ =====================
@@ -729,7 +732,6 @@ private:
     }
 
     uint8_t parse(const String& str, uint16_t size) {
-        Serial.println(size);
         ovfFlag = size > 25000;     // 1 полное сообщение на русском языке или ~5 на английском
         if (ovfFlag) return 2;
         if (!str.startsWith(F("{\"ok\":true"))) return 3;       // ошибка запроса (неправильный токен итд)
@@ -825,7 +827,7 @@ private:
     void (*_callback)(FB_msg& msg) = nullptr;
     String _token;
     String* _query = nullptr;
-    uint16_t _prd, _limit;
+    uint16_t _ovf, _prd, _limit;
     int32_t ID = 0;
     uint32_t tmr = 0;
     bool _incr = true;
