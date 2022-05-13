@@ -65,14 +65,7 @@ For comparison, we used a minimal example with sending a message to the chat and
 ## Initialization
 ```cpp
 fastbot bot
-FastBot bot(token);
-FastBot bot(token, limit);
-FastBot bot(token, limit, threshold);
-FastBot bot(token, limit, threshold, period);
-// token - unique bot code, taken from BotFather
-// limit - the number of messages received from one request (default 10)
-// threshold - the number of characters at whichAPI request will be considered too large and will be skipped (default 10000)
-// period - bot automatic polling period in ms (default 3500)
+FastBot bot(token); // token - unique bot code, taken from BotFather
 ```
 
 <a id="docs"></a>
@@ -80,10 +73,9 @@ FastBot bot(token, limit, threshold, period);
 ```cpp
 // ============== SETTINGS ==============
 void setToken(String token); // change/set bot token
-void setChatID(String chatID); // setting the chat ID (white list), optional. Multiple separated by commas ("id1,id2,id3")
+void setChatID(String chatID); // mouthChat ID (white list), optional. Multiple separated by commas ("id1,id2,id3")
 void setPeriod(int period); // polling period in ms (default 3500)
-void setLimit(int limit); // max number of messages per request
-void setOvf(int ovf); // max number of characters per request (flood protection)
+void setLimit(int limit); // number of messages processed per request, 1..100. (default 10)
 void setBufferSizes(uint16_t rx, uint16_t tx); // set buffer sizes for receiving and sending, by default. 512 and 512 bytes (only for esp8266)
 
 void setTextMode(uint8_t mode); // text mode "to send": FB_TEXT, FB_MARKDOWN, FB_HTML (see textMode example)
@@ -157,7 +149,7 @@ uint8_t closeMenuText(String msg);
 uint8_t closeMenuText(String msg, String id);
 
 
-// =====Cranberries ======== INLINE MENU =============
+// ============= INLINE MENU =============
 // message (msg) with an inline menu (menu) in the chat/chats specified in setChatID OR pass the id of the chat/chats
 uint8_t inlineMenu(String msg, String menu);
 uint8_t inlineMenu(String msg, String menu, String id);
@@ -249,15 +241,15 @@ String dateString(); // get date string in DD.MM.YYYY format
 
 // ========== DEFINE SETTINGS ==========
 // declare BEFORE linking the library
-#define FB_NO_UNICODE // disable U conversionКлюква nicode для входящих сообщений (чуть ускорит программу)
-#define FB_NO_URLENCODE // отключить конвертацию urlencode для исходящих сообщений (чуть ускорит программу)
+#define FB_NO_UNICODE // disable Unicode conversion for incoming messages (slightly speed up the program)
+#define FB_NO_URLENCODE // disable urlencode conversion for outgoing messages (slightly speeds up the program)
 ```
 
 <a id="usage"></a>
-## Использование
-### ID чата/чатов
-В библиотеке реализован необязательный "белый список" ID чатов, в которых работает бот. По умолчанию отключен.
-- Устанавливается через `setChatID()`, куда можно передать одиночный ID или сразу несколько через запятую: `setChatID("id1,id2,id3")`
+## Usage
+### ID of the chat(s)
+The library implements an optional "white list" of chat IDs in which the bot works. Disabled by default.
+- Set via `setChatID()`, where you can pass a single ID or several at onceКлюква о через запятую: `setChatID("id1,id2,id3")`
 - Можно редактировать строку `chatIDs` напрямую как член класса
 - Все функции отправки будут отправлять данные в заданный чат/чаты, если не указать его вручную в функции
 
@@ -287,6 +279,8 @@ String dateString(); // get date string in DD.MM.YYYY format
 ```cpp
   Serial.println(msg.toString())
 ```
+
+> Примечание: Телеграм разделяет текст на несколько сообщений, если длина текста превышает ~4000 символов! Эти сообщения будут иметь разный ID в чате.
 
 ### Тикер
 Для опроса входящих сообщений нужно подключить обработчик сообщений и вызывать `tick()` в главном цикле программы `loop()`, опрос происходит по встроенному таймеру. 
@@ -336,21 +330,21 @@ void loop() {
 - `\n` - вертикальное разделение кнопок
 - Лишние пробелы вырезаются автоматически
 
-Пример меню 3x1: `"Menu1 \t Menu2 \t Cranberries Menu3 \n Menu4"`
+Пример меню 3x1: `"Menu1 \t Menu2 \t Menu3 \n Menu4"`
 
-Result:
+Результат:
 ```cpp
  _______________________
-| | | |
-| Menu1 | menu2 | Menu3 |
+|       |       |       |
+| Menu1 | Menu2 | Menu3 |
 |_______|_______|_______|
-| |
-| M e n u 4 |
+|                       |
+|       M e n u 4       |
 |_______________________|
 ```
 
-### Regular menu
-Large menu at the bottom of the chat.
+### Обычное меню
+Большое меню в нижней части чата.
 ```cpp
 showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4");
 ```
@@ -461,7 +455,7 @@ FB_Time t(bot.getUnix(), 3);
 ## Versions
 - v1.0
 - v1.1 - optimization
-- v1.2 - you can set several chatIDs and send to the specified chat
+- v1.2 - you can set multiple chatID and send to the specified chat
 - v1.3 - added the ability to set text when opening and closing the menu
 - v1.3.1 - fixed bugs since 1.3
 - v1.4 - added the ability to delete messages
@@ -503,7 +497,7 @@ FB_Time t(bot.getUnix(), 3);
 - v2.7: Added sending stickers
 - v2.8: Removed extra serial output, GMT can be in minutes
 - v2.9: Parsing bug fixed, parsing speeded up, formatted time output added, last name and message time added
-- v2.10: Added functions to change the name and description of the chat, pin and unpin messages. Removed edit/deleteMessageID, editMenuID
+- v2.10: Added functions for changing the name and description of the chat, pinning and unpinning messages. Removed edit/deleteMessageID, editMenuID
 - v2.11:
     - Optimization, bug fixes
     - Callback data is now parsed separately in data
@@ -513,6 +507,8 @@ FB_Time t(bot.getUnix(), 3);
     - Removed first_name and last_name (preserving legacy)
     - usrID and ID renamed to userID and messageID (preserving legacy)
     - Completely removed the old incoming message handler
+
+- v2.12: examples fixed, isBot parsing fixed, long message protection mechanism redone, initialization redone
     
 <a id="feedback"></a>
 ## Bugs and feedback
