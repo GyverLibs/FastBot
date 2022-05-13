@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.11-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.12-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -69,14 +69,7 @@ ESP8266 (SDK v2.6+), ESP32
 ## Инициализация
 ```cpp
 FastBot bot;
-FastBot bot(токен);
-FastBot bot(токен, лимит);
-FastBot bot(токен, лимит, порог);
-FastBot bot(токен, лимит, порог, период);
-// токен - уникальный код бота, берётся у BotFather
-// лимит - количество сообщений, получаемое из одного запроса (по умолч. 10)
-// порог - количество символов, при котором API запрос будет считаться слишком большим и будет пропущен (по умолч. 10000)
-// период - период автоматического опроса бота в мс (по умолч. 3500)
+FastBot bot(токен); // токен - уникальный код бота, берётся у BotFather
 ```
 
 <a id="docs"></a>
@@ -86,8 +79,7 @@ FastBot bot(токен, лимит, порог, период);
 void setToken(String token);                    // изменить/задать токен бота
 void setChatID(String chatID);                  // установка ID чата (белый список), необязательно. Можно несколько через запятую ("id1,id2,id3")
 void setPeriod(int period);                     // период опроса в мс (по умолч. 3500)
-void setLimit(int limit);                       // макс кол-во сообщений на запрос
-void setOvf(int ovf);                           // макс кол-во символов на запрос (защита от флуда)
+void setLimit(int limit);                       // кол-во сообщений, которое обрабатывается за один запрос, 1..100. (по умолч. 10)
 void setBufferSizes(uint16_t rx, uint16_t tx);  // установить размеры буфера на приём и отправку, по умолч. 512 и 512 байт (только для esp8266)
 
 void setTextMode(uint8_t mode);                 // режим текста "для отправки": FB_TEXT, FB_MARKDOWN, FB_HTML (см. пример textMode)
@@ -291,6 +283,8 @@ String dateString();    // получить строку даты формата
 ```cpp
   Serial.println(msg.toString())
 ```
+
+> Примечание: Телеграм разделяет текст на несколько сообщений, если длина текста превышает ~4000 символов! Эти сообщения будут иметь разный ID в чате.
 
 ### Тикер
 Для опроса входящих сообщений нужно подключить обработчик сообщений и вызывать `tick()` в главном цикле программы `loop()`, опрос происходит по встроенному таймеру. 
@@ -517,6 +511,8 @@ FB_Time t(bot.getUnix(), 3);
     - Убраны first_name и last_name (с сохранением легаси)
     - usrID и ID переименованы в userID и messageID (с сохранением легаси)
     - Окончательно убран старый обработчик входящих сообщений
+
+- v2.12: поправлены примеры, исправлен парсинг isBot, переделан механизм защиты от длинных сообщений, переделана инициализация
     
 <a id="feedback"></a>
 ## Баги и обратная связь
