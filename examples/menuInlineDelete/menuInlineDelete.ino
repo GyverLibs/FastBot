@@ -1,5 +1,5 @@
 // тест инлайн меню с удалением сообщения
-// отправь Show menu для открытия меню
+// отправь /menu для открытия меню
 
 #define WIFI_SSID "login"
 #define WIFI_PASS "pass"
@@ -15,41 +15,41 @@ void setup() {
   bot.setChatID(CHAT_ID);
   bot.attach(newMsg);
   String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
-  bot.inlineMenu("Menu 0", menu1);
+  bot.inlineMenu("Some menu", menu1);
 }
 
 byte depth = 0;
 void newMsg(FB_msg& msg) {
-  String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
-  String menu2 = F("Answer 1.1 \t Answer 1.2 \t Answer 1.3 \n Back");
-  String menu3 = F("Answer 2.1 \t Answer 2.2 \t Answer 2.3 \n Back");
-  String menu4 = F("Answer 3.1 \t Answer 3.2 \t Answer 3.3 \n Back");
-
+  Serial.println(msg.toString());
+  
   // удаляем последнее сообщение от бота
   bot.deleteMessage(bot.lastBotMsg());
   
-  if (msg.text == "Menu 1") {
+  if (msg.data == "Menu 1") {
+    String menu2 = F("Answer 1.1 \t Answer 1.2 \t Answer 1.3 \n Back");
     bot.inlineMenu("Menu 1", menu2);
     depth = 1;
   }
-  if (msg.text == "Menu 2") {
+  if (msg.data == "Menu 2") {
+    String menu3 = F("Answer 2.1 \t Answer 2.2 \t Answer 2.3 \n Back");
     bot.inlineMenu("Menu 2", menu3);
     depth = 1;
   }
-  if (msg.text == "Menu 3") {
+  if (msg.data == "Menu 3") {
+    String menu4 = F("Answer 3.1 \t Answer 3.2 \t Answer 3.3 \n Back");
     bot.inlineMenu("Menu 3", menu4);
     depth = 1;
   }
-  if (msg.text == "Back" && depth == 1) {
+  if (msg.data == "Back" && depth == 1) {
+    String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
     bot.inlineMenu("Menu 0", menu1);
     depth = 0;
   }
 
-  if (msg.text == "Show menu") {
+  if (msg.text == "/menu") {
+    String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
     bot.inlineMenu("Menu 0", menu1);
-  }
-
-  Serial.println(msg.text);
+  }  
 }
 
 void loop() {

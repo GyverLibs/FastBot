@@ -77,6 +77,7 @@
         - Убраны first_name и last_name (с сохранением легаси)
         - usrID и ID переименованы в userID и messageID (с сохранением легаси)
         - Окончательно убран старый обработчик входящих сообщений
+    v2.12: поправлены примеры, исправлен парсинг isBot, переделан механизм защиты от длинных сообщений, переделана инициализация
 */
 
 /*
@@ -124,13 +125,10 @@ static HTTPClient _FB_httpGet;
 class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
-    FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 10000, uint16_t period = 3600) {
+    FastBot(String token = "") {
         _token.reserve(46);
         chatIDs.reserve(10);
         _token = token;
-        _ovf = ovf;
-        _limit = limit;
-        _prd = period;
         setBufferSizes(512, 512);
         _FB_client.setInsecure();
         //_FB_httpGet.setTimeout(1000);
@@ -144,14 +142,9 @@ public:
         #endif
     }
     
-    // макс кол-во сообщений на запрос
+    // макс кол-во сообщений на запрос к API
     void setLimit(uint16_t limit) {
         _limit = limit;
-    }
-    
-    // макс символов
-    void setOvf(uint16_t ovf) {
-        _ovf = ovf;
     }
     
     // период опроса
@@ -196,7 +189,7 @@ public:
         String req;
         _addToken(req);
         req += F("/getUpdates?limit=");
-        req += _limit;
+        req += ovfFlag ? 1 : _limit;    // берём по 1 сообщению если переполнены
         req += F("&offset=");
         req += ID;
         if (_FB_httpGet.begin(_FB_client, req)) {
@@ -736,13 +729,12 @@ private:
     }
 
     uint8_t parse(const String& str, uint16_t size) {
+        Serial.println(size);
+        ovfFlag = size > 25000;     // 1 полное сообщение на русском языке или ~5 на английском
+        if (ovfFlag) return 2;
         if (!str.startsWith(F("{\"ok\":true"))) return 3;       // ошибка запроса (неправильный токен итд)
         int16_t IDpos = str.indexOf(F("{\"update_id\":"), 0);   // первая позиция ключа update_id
-        if (size > _ovf) {                                      // переполнен
-            if (IDpos > 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt();
-            ID++;
-            return 2;
-        }
+        
         int16_t counter = 0;
         while (true) {
             if (IDpos < 0 || IDpos == (int16_t)str.length()) break;
@@ -770,7 +762,8 @@ private:
             String userID;
             find(str, userID, textPos, F("\"id\":"), ',', IDpos);
             
-            bool is_bot = find(str, F("\"is_bot\":true"), textPos, IDpos);
+            String is_bot;
+            find(str, is_bot, textPos, F("\"is_bot\":"), ',', IDpos);
             
             String first_name;
             find(str, first_name, textPos, F("\"first_name\":\""), '\"', IDpos);
@@ -812,7 +805,7 @@ private:
                 data,
                 (bool)_query,
                 edited,
-                is_bot,
+                is_bot[0] == 't',
                 (uint32_t)date.toInt(),
                 
                 // legacy
@@ -832,7 +825,7 @@ private:
     void (*_callback)(FB_msg& msg) = nullptr;
     String _token;
     String* _query = nullptr;
-    uint16_t _ovf, _prd, _limit;
+    uint16_t _prd, _limit;
     int32_t ID = 0;
     uint32_t tmr = 0;
     bool _incr = true;
@@ -840,6 +833,7 @@ private:
     uint8_t parseMode = 0;
     bool notif = true;
     bool clrSrv = false;
+    bool ovfFlag = 0;
     
     uint32_t _unix = 0;
     uint32_t _lastUpd = 0;

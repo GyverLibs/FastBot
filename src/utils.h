@@ -12,7 +12,7 @@ struct FB_msg {
     String& data;       // callback дата
     bool query;         // запрос
     bool& edited;       // сообщение отредактировано
-    bool& isBot;        // сообщение от бота
+    bool isBot;        // сообщение от бота
     uint32_t unix;      // время сообщения
     
     // legacy
@@ -24,16 +24,16 @@ struct FB_msg {
     String toString() {
         String s;
         s.reserve(200);
-        s += F("user ID: ");
+        s += F("userID: ");
         s += userID;
         s += F(", username: ");
         s += username;
         s += '\n';
         
-        s += F("chat ID: ");
+        s += F("chatID: ");
         s += chatID;
-        s += F(", message ID: ");
-        s += ID;
+        s += F(", messageID: ");
+        s += messageID;
         s += '\n';
         
         s += F("text: ");
