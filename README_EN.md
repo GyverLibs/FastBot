@@ -15,6 +15,7 @@ Very simple and fast library for telegram bot on esp8266/esp32
 - Unicode support (other languages ​​+ emoji) for incoming messages
 - Built-in urlencode for outgoing messages
 - Built-in real time clock with synchronization from the Telegram server
+- Possibility of OTA firmware update by file from Telegram chat
 
 ### Compatibility
 ESP8266 (SDK v2.6+), ESP32
@@ -44,7 +45,21 @@ For comparison, we used a minimal example with sending a message to the chat and
 - [Initialization](#init)
 - [Documentation](#docs)
 - [Usage](#usage)
-- [Example](#example)
+    - [ID chat/chats](#chatid)
+    - [Message Parsing](#inbox)
+    - [Ticker](#tick)
+    - [Minimal Example](#example)
+    - [Referring to messages](#msgid)
+    - [Send stickers](#sticker)
+    - [Menu](#menu)
+    - [Normal menu](#basic)
+    - [Inline menu](#inline)
+    - [Inline menu with callback](#callb)
+    - [Response to callback](#answer)
+    - [Time module](#unix)
+    - [Time to receive message](#time)
+    - [Real Time Clock](#rtc)
+    - [OTA firmware update](#ota)
 - [Versions](#versions)
 - [Bugs and feedback](#feedback)
 
@@ -59,13 +74,15 @@ For comparison, we used a minimal example with sending a message to the chat and
     - Unzip and put in *C:\Program Files\Arduino\libraries* (Windows x32)
     - Unpack and put in *Documents/Arduino/libraries/*
     - (Arduino IDE) automatic installation from .zip: *Sketch/Include library/Add .ZIP library…* and specify the downloaded archive
-- Read more detailed instructions for installing libraries [here] (https://alexgyver.ru/arduino-first/#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE% D0%B2%D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)
+- Read more andinstructions for installing libraries [here] %D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)
 
 <a id="init"></a>
 ## Initialization
+- [Instructions on how to create and configure a Telegram bot](https://kit.alexgyver.ru/tutorials/telegram-basic/)
+
 ```cpp
 fastbot bot
-FastBot bot(token); // token - unique bot code, taken from BotFather
+FastBot bot(token); // indicating the token
 ```
 
 <a id="docs"></a>
@@ -73,7 +90,7 @@ FastBot bot(token); // token - unique bot code, taken from BotFather
 ```cpp
 // ============== SETTINGS ==============
 void setToken(String token); // change/set bot token
-void setChatID(String chatID); // mouthChat ID (white list), optional. Multiple separated by commas ("id1,id2,id3")
+void setChatID(String chatID); // setting the chat ID (white list), optional. Multiple separated by commas ("id1,id2,id3")
 void setPeriod(int period); // polling period in ms (default 3500)
 void setLimit(int limit); // number of messages processed per request, 1..100. (default 10)
 void setBufferSizes(uint16_t rx, uint16_t tx); // set buffer sizes for receiving and sending, by default. 512 and 512 bytes (only for esp8266)
@@ -231,28 +248,31 @@ String dateString(); // get date string in DD.MM.YYYY format
 // Many functions return status:
 // 0 - waiting
 // 1 - OK
-// 2 - ovf full
+// 2 - Full
 // 3 - Telegram error
 // 4 - Connection error
 // 5 - chat ID not set
-// 6 - multiple send, status unknown
-// 7 - handler not connected
+// 6 - multiple send, hundredКлюква тус неизвестен
+// 7 - не подключен обработчик
 
 
-// ========== DEFINE SETTINGS ==========
-// declare BEFORE linking the library
-#define FB_NO_UNICODE // disable Unicode conversion for incoming messages (slightly speed up the program)
-#define FB_NO_URLENCODE // disable urlencode conversion for outgoing messages (slightly speeds up the program)
+// ========== ДЕФАЙНЫ НАСТРОЕК ==========
+// объявлять ПЕРЕД подключением библиотеки
+#define FB_NO_UNICODE   // отключить конвертацию Unicode для входящих сообщений (чуть ускорит программу)
+#define FB_NO_URLENCODE // отключить конвертацию urlencode для исходящих сообщений (чуть ускорит программу)
 ```
 
 <a id="usage"></a>
-## Usage
-### ID of the chat(s)
-The library implements an optional "white list" of chat IDs in which the bot works. Disabled by default.
-- Set via `setChatID()`, where you can pass a single ID or several at onceКлюква о через запятую: `setChatID("id1,id2,id3")`
+## Использование
+
+<a id="chatid"></a>
+### ID чата/чатов
+В библиотеке реализован необязательный "белый список" ID чатов, в которых работает бот. По умолчанию отключен.
+- Устанавливается через `setChatID()`, куда можно передать одиночный ID или сразу несколько через запятую: `setChatID("id1,id2,id3")`
 - Можно редактировать строку `chatIDs` напрямую как член класса
 - Все функции отправки будут отправлять данные в заданный чат/чаты, если не указать его вручную в функции
 
+<a id="inbox"></a>
 ### Парсинг сообщений
 Сообщения автоматически читаются в `tick()`, при поступлении нового сообщения вызывается указанная функция-обработчик. Но тут есть варианты:
 - Если задан ID чата/чатов (через `setChatID()`) - происходит автоматическое отсеивание сообщений НЕ из указанных чатов
@@ -268,11 +288,12 @@ The library implements an optional "white list" of chat IDs in which the bot wor
     - `String username` - имя пользователя (в API Telegram это first_name)
     - `String chatID` - ID чата
     - `int32_t messageID` - ID сообщения в чате
-    - `String text` - текст сообщения
+    - `String text` - текст сообщения или попдпись к файлу
     - `String data` - callback дата сообщения (если есть)
     - `bool query` - запрос
     - `bool edited` - сообщение отредактировано
     - `bool isBot` - сообщение от бота
+    - `bool OTA` - запрос на OTA обновление (получен .bin файл)
     - `uint32_t unix` - время сообщения
     
 С версии 2.11 добавлен метод `toString()`, позволяющий вывести строкой всё содержимое структуры
@@ -282,12 +303,14 @@ The library implements an optional "white list" of chat IDs in which the bot wor
 
 > Примечание: Телеграм разделяет текст на несколько сообщений, если длина текста превышает ~4000 символов! Эти сообщения будут иметь разный ID в чате.
 
+<a id="tick"></a>
 ### Тикер
 Для опроса входящих сообщений нужно подключить обработчик сообщений и вызывать `tick()` в главном цикле программы `loop()`, опрос происходит по встроенному таймеру. 
 По умолчанию период опроса установлен 3600 миллисекунд. Можно опрашивать чаще (сменить через `setPeriod()`), но Телеграм иногда тупит и 
 при частом опросе запрос может выполняться ~3 секунды вместо 60 миллисекунд! На это время программа "зависает" внутри `tick()`. 
 При периоде ~3600 мс этого не происходит, поэтому я сделал его по умолчанию.
 
+<a id="example"></a>
 ### Минимальный пример
 ```cpp
 void setup() {
@@ -310,6 +333,7 @@ void loop() {
 }
 ```
 
+<a id="msgid"></a>
 ### Обращение к сообщениям
 Для редактирования и удаления сообщений и меню, а также закрепления сообщений, нужно знать ID сообщения.
 - ID входящего сообщения приходит в обработчик входящих сообщений
@@ -318,38 +342,42 @@ void loop() {
 
 Будьте внимательны с ID чата, у всех чатов своя нумерация ID сообщений!
 
+<a id="sticker"></a>
 ### Отправка стикеров
-Для отправки стикера нужно знать ID стикера. Отправь нужный стикер боту *@idstickerbot*, он пришлёт ID стикера. 
-Этот ID нужно передать в функцию `sendSticker()`.
+Для отправки стикераCranberries need to know the ID of the sticker. Send the desired sticker to the *@idstickerbot* bot, it will send the sticker ID.
+This ID must be passed to the `sendSticker()` function.
 
-### Меню
-> Примечание: для всех вариантов меню *не производится* url encode. Избегайте символов `#` и `&` или используйте уже закодированный url!
+<a id="menu"></a>
+### Menu
+> Note: for all menu options *not produced* url encode. Avoid the `#` and `&` characters, or use an already encoded url!
 
-Для отправки меню используется строка с именами кнопок и специальным форматированием:
-- `\t` - горизонтальное разделение кнопок
-- `\n` - вертикальное разделение кнопок
-- Лишние пробелы вырезаются автоматически
+To send the menu, a string with button names and special formatting is used:
+- `\t` - horizontal separation of buttons
+- `\n` - vertical separation of buttons
+- Extra spaces are cut automatically
 
-Пример меню 3x1: `"Menu1 \t Menu2 \t Menu3 \n Menu4"`
+3x1 menu example: `"Menu1 \t Menu2 \t Menu3 \n Menu4"`
 
-Результат:
+Result:
 ```cpp
  _______________________
-|       |       |       |
-| Menu1 | Menu2 | Menu3 |
+| | | |
+| Menu1 | menu2 | Menu3 |
 |_______|_______|_______|
-|                       |
-|       M e n u 4       |
+| |
+| M e n u 4 |
 |_______________________|
 ```
 
-### Обычное меню
-Большое меню в нижней части чата.
+<a id="basic"></a>
+### Regular menu
+Large menu at the bottom of the chat.
 ```cpp
 showMenu("Menu1 \t Menu2 \t Menu3 \n Menu4");
 ```
 Pressing the button sends the text from the button (the `text` message field).
 
+<a id="inline"></a>
 ### Inline menu
 Menu in the message. Requires a menu name.
 ```cpp
@@ -357,6 +385,7 @@ inlineMenu("MyMenu", "Menu1 \t Menu2 \t Menu3 \n Menu4");
 ```
 Pressing the button sends the menu name (the `text` message field) and the text from the button (the `data` message field).
 
+<a id="callb"></a>
 ### Inline menu with callback
 Menu in the message. Allows you to set a unique text for each button, which will be sent by the bot along with the menu name.
 The list of callbacks is listed separated by commas in the order of the menu buttons:
@@ -368,6 +397,7 @@ bot.inlineMenuCallback("Menu 1", menu1, cback1);
 Clicking the button sends the menu name (the `text` message field) and the specified data (the `data` message field).
 - (Since 2.11) if callback is set as http/https address, button will automatically become **link button**
 
+<a id="answer"></a>
 ### Response to callback
 When you click on the inline menu button, a callback is sent to the bot, the `query` flag will be raised in the message handler. The Telegram server will wait for a response.
 You can respond to the callback with:
@@ -383,6 +413,7 @@ void newMsg(FB_msg& msg) {
 
 > If nothing is answered, the library itself will send an empty response and the "timer" on the button will disappear.
 
+<a id="unix"></a>
 ### Time module
 The library has a data type `FB_Time`, which is a structure with fields:
 ```cpp
@@ -420,96 +451,121 @@ Serial print(' ');
 Serial.println(t.dateString()); // DD.MM.YYYY
 ```
 
+<a id="time"></a>
 ### Message received time
 In the incoming message handler, the `FB_msg` structure has a `unix` field that stores the time of the message in unix format.
 To translate into a more readable format, we act according to the scheme described above:
 ```cpp
 void newMsg(FB_msg& msg) {
-  FB_Time t(msg.unix, 3); // passed unix and time zone
+  FB_Time t(msg.unix, 3); // passed unix and timezone
   Serial.print(t.timeString());
   Serial print(' ');
   Serial.println(t.dateString());
 }
 ```
 
+<a id="rtc"></a>
 ### Real time clock
-In response to any message from the bot, the server reports the time of sending in unix format. Since version 2.6 this time is parsed
-library and **count continues on** using standard time functions. Thus, it is enough to send once
-message after the board is turned on, so that the library synchronizes the clock. The time will also be synchronized on further sendings.
-and to be specified, because the time calculated by means of esp will go away (~ 2 seconds per day). Instruments:
+In response to any message from the bot, the server withКлюква ообщает время отправки в формате unix. С версии 2.6 это время парсится 
+библиотекой и **счёт продолжается дальше** при помощи стандартных функций времени. Таким образом достаточно один раз отправить 
+сообщение после включения платы, чтобы библиотека синхронизировала часы. При дальнейших отправках время также будет синхронизироваться 
+и уточняться, т.к. вычисляемое средствами esp время будет уходить (~2 секунды в сутки). Инструменты:
 
-- `uint32_t getUnix()` - returns the current time in unix format or `0` if the time is out of sync.
-- `bool timeSynced()` - will return `true` if the clock is synchronized.
-- `FB_Time getTime(gmt)` - you need to pass your time zone, it will return `FB_Time`.
+- `uint32_t getUnix()` - вернёт текущее время в unix формате или `0`, если время не синхронизировано.
+- `bool timeSynced()` - вернёт `true` если часы синхронизированы. 
+- `FB_Time getTime(gmt)` - нужно передать свой часовой пояс, она вернёт `FB_Time`.
 
-Thus, there are two ways to get the time (see the timeTest example):
+Таким образом получить время можно двумя способами (см. пример timeTest):
 ```cpp
 FB_Time t = bot.getTime(3);
-// or
+// или
 FB_Time t(bot.getUnix(), 3);
 ```
 
-<a id="example"></a>
+<a id="ota"></a>
+### OTA обновление прошивки
+С версии библиотеки 2.13 появилось обновление прошивки "по воздуху" (OTA) через чат. Для обновления нужно:
+- Скомпилировать программу в файл: *Arduino IDE/Скетч/Экспорт бинарного файла* (файл **.bin** появится в папке со скетчем)
+- Отправить файл в чат с ботом, можно добавить подпись
+- Файл будет обработан как обычное входящее сообщение от пользователя
+    - Подпись к файлу можно получить из поля `text`
+    - Будет поднят флаг `OTA`
+- Для запуска процесса обновления нужно вызвать `update` внутри обработчика сообщений
+- В тот же чат чат будет отправлен статус обновления (*OK* или *error*)
+- После успешного обновления esp перезагрузится
+
+```cpp
+// обновить, если просто прислали bin файл
+if (msg.OTA) bot.update();
+
+// обновить, если файл имеет нужную подпись
+if (msg.OTA && msg.text == "update") bot.update();
+
+// обновить, если прислал известный человек (админ)
+if (msg.OTA && msg.chatID == "123456") bot.update();
+```
+
 
 <a id="versions"></a>
-## Versions
+## Версии
 - v1.0
-- v1.1 - optimization
-- v1.2 - you can set multiple chatID and send to the specified chat
-- v1.3 - added the ability to set text when opening and closing the menu
-- v1.3.1 - fixed bugs since 1.3
-- v1.4 - added the ability to delete messages
-- v1.5 - optimization, the ability to change the token, new message parsing (id, name, text)
-- v1.5.1 - get message ID as well
-- v1.6 - added FB_DYNAMIC_HTTP mode, reading username
+- v1.1 - оптимизация
+- v1.2 - можно задать несколько chatID и отправлять в указанный чат
+- v1.3 - добавлена возможность задать текст при открытии и закрытии меню
+- v1.3.1 - исправлены ошибки с 1.3
+- v1.4 - добавлена возможность удалять сообщения
+- v1.5 - оптимизация, возможность смены токена, новый парсинг сообщений (id, имя, текст)
+- v1.5.1 - получаем также ID сообщения
+- v1.6 - добавлен режим FB_DYNAMIC_HTTP, чтение имени пользователя
 - v1.7:
-  - Removed FB_DYNAMIC_HTTP dynamic mode, works too slow
-  - Fixed warnings
-  - Fixed the work of the bot in "groups" (negative chat ID)
-  - Memory optimization
-  - Speed ​​up work
-  - Fixed work every other time in the "echo" script
+  - Убрал динамический режим FB_DYNAMIC_HTTP, работает слишком медленно
+  - Исправил warningи
+  - Починил работу бота в "группах" (отрицательный ID чата)
+  - Оптимизация памяти
+  - Ускорил работу
+  - Пофиксил работу через раз в сценарии "эхо"
   
 - v2.0:
-    - Removed at least 3200 ms
-    - Added Unicode processing (Russian language, emoji). Thanks to Gleb Zhukov!
-    - Extra spaces are removed from the menu, it became easier to work
-    - Support esp32
-    - Big optimization
-    - Added callbacks to inlineMenu
-    - Added user ID
-    - Added editing messages and a bunch of everything
+    - Убрал минимум в 3200 мс
+    - Добавил обработку Юникода (русский язык, эмодзи). Спасибо Глебу Жукову!
+    - Из меню удаляются лишние пробелы, работать стало проще
+    - Поддержка esp32
+    - Большая оптимизация
+    - Добавил коллбэки в inlineMenu
+    - Добавил ID юзера
+    - Добавил редактирование сообщений и кучу всего
 
-- v2.1:
-    - More optimization
-    - Added text formatting (markdown, html)
-    - Added a reply to the message
+- v2.1: 
+    - Ещё оптимизация
+    - Добавил форматирование текста (markdown, html)
+    - Добавил ответ на сообщение
 
 - v2.2:
-    - Big memory and performance optimizations
-    - Added notify() - notifications from bot messages
-    - Added a one-time display of the keyboard
+    - Большая оптимизация памяти и производительности
+    - Добавил notify() - уведомления от сообщений бота
+    - Добавил единоразовый показ клавиатуры
     
-- v2.3: Minor optimization
-- v2.4: Added url encode for message text
-- v2.5: Added flags to FB_msg: message edited and message sent by bot. Improved text parsing
-- v2.6: Added built-in real time clock
-- v2.7: Added sending stickers
-- v2.8: Removed extra serial output, GMT can be in minutes
-- v2.9: Parsing bug fixed, parsing speeded up, formatted time output added, last name and message time added
-- v2.10: Added functions for changing the name and description of the chat, pinning and unpinning messages. Removed edit/deleteMessageID, editMenuID
-- v2.11:
-    - Optimization, bug fixes
-    - Callback data is now parsed separately in data
-    - Redesigned work with callback
-    - Added toString() for FB_msg for debugging
-    - Added processing of url addresses in callback
+- v2.3: Небольшая оптимизация
+- v2.4: Добавил url encode для текста сообщений
+- v2.5: Добавил флаги в FB_msg: сообщение отредактировано и сообщение отправлено ботом. Улучшил парсинг текста
+- v2.6: Добавил встроенные часы реального времени
+- v2.7: Добавил отправку стикеров
+- v2.8: Убрал лишний вывод в сериал, GMT можно в минутах
+- v2.9: Исправлена бага в парсинге, парсинг ускорен, добавлен вывод форматированного времени, добавлена фамилия и время сообщения
+- v2.10: Добавлены функции для изменения названия и описания чата, закрепления и открепления сообщений. Убраны edit/deleteMessageID, editMenuID
+- v2.11: 
+    - Оптимизация, исправление багов
+    - Callback data теперь парсится отдельно в data
+    - Переделана работа с callback
+    - Добавлен toString() для FB_msg для отладки
+    - В callback добавлена обработка url адcranberry res
     - Removed first_name and last_name (preserving legacy)
     - usrID and ID renamed to userID and messageID (preserving legacy)
     - Completely removed the old incoming message handler
 
 - v2.12: examples fixed, isBot parsing fixed, long message protection mechanism redone, initialization redone
-    
+- v2.13: Memory optimization. Added OTA update
+
 <a id="feedback"></a>
 ## Bugs and feedback
 When you find bugs, create an **Issue**, or better, immediately write to the mail [alex@alexgyver.ru](mailto:alex@alexgyver.ru)
