@@ -12,7 +12,8 @@ struct FB_msg {
     String& data;       // callback дата
     bool query;         // запрос
     bool& edited;       // сообщение отредактировано
-    bool isBot;        // сообщение от бота
+    bool isBot;         // сообщение от бота
+    bool OTA;           // запрос на OTA обновление
     uint32_t unix;      // время сообщения
     
     // legacy
@@ -48,6 +49,8 @@ struct FB_msg {
         s += edited;
         s += F(", isBot: ");
         s += isBot;
+        s += F(", OTA: ");
+        s += OTA;
         s += F(", unix: ");
         s += unix;
         s += '\n';

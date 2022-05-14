@@ -53,6 +53,7 @@ clearServiceMessages	KEYWORD2
 pinMessage	KEYWORD2
 unpinMessage	KEYWORD2
 unpinAll	KEYWORD2
+update	KEYWORD2
 
 timeSynced	KEYWORD2
 getTime	KEYWORD2
@@ -67,6 +68,7 @@ data	KEYWORD2
 query	KEYWORD2
 edited	KEYWORD2
 isBot	KEYWORD2
+OTA	KEYWORD2
 unix	KEYWORD2
 toString	KEYWORD2
 

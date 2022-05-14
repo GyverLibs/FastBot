@@ -16,6 +16,7 @@
     - Поддержка Unicode (другие языки + эмодзи) для входящих сообщений
     - Встроенный urlencode для исходящих сообщений
     - Встроенные часы реального времени с синхронизацией от сервера Telegram
+    - Возможность OTA обновления прошивки файлом из чата Telegram
     
     AlexGyver, alex@alexgyver.ru
     https://alexgyver.ru/
@@ -78,13 +79,14 @@
         - usrID и ID переименованы в userID и messageID (с сохранением легаси)
         - Окончательно убран старый обработчик входящих сообщений
     v2.12: поправлены примеры, исправлен парсинг isBot, переделан механизм защиты от длинных сообщений, переделана инициализация
+    v2.13: Оптимизация памяти. Добавил OTA обновление
 */
 
 /*
     Статусы tick:
     0 - ожидание
     1 - ОК
-    2 - Переполнен по ovf
+    2 - Переполнен
     3 - Ошибка телеграм
     4 - Ошибка подключения
     5 - не задан chat ID
@@ -103,23 +105,25 @@
 #define FB_ALERT 1
 
 #include <Arduino.h>
+#include <StreamString.h>
+#include "utils.h"
+
 #ifdef ESP8266
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>
 #include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
 static BearSSL::WiFiClientSecure _FB_client;
-static HTTPClient _FB_httpGet, _FB_httpReq;
+static HTTPClient _FB_http;
 #else
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <HTTPUpdate.h>
 #include <WiFiClientSecure.h>
 WiFiClientSecure _FB_client;
-static HTTPClient _FB_httpGet;
-#define _FB_httpReq _FB_httpGet
+static HTTPClient _FB_http;
 #endif
-
-#include "utils.h"
 
 // ================================
 class FastBot {
@@ -134,7 +138,6 @@ public:
         _prd = period;
         setBufferSizes(512, 512);
         _FB_client.setInsecure();
-        //_FB_httpGet.setTimeout(500);
     }
     
     // ===================== НАСТРОЙКИ =====================
@@ -188,18 +191,42 @@ public:
     // ручная проверка обновлений
     uint8_t tickManual() {
         if (!*_callback) return 7;
-        uint8_t status = 1;
         String req;
         _addToken(req);
         req += F("/getUpdates?limit=");
-        req += ovfFlag ? 1 : _limit;    // берём по 1 сообщению если переполнены
+        req += ovfFlag ? 1 : _limit;    // берём по 1 сообщению если переполнен
         req += F("&offset=");
         req += ID;
-        if (_FB_httpGet.begin(_FB_client, req)) {
-            if (_FB_httpGet.GET() == HTTP_CODE_OK) status = parse(_FB_httpGet.getString(), _FB_httpGet.getSize());
-            else status = 3;
-            _FB_httpGet.end();
-        } else status = 4;
+        
+        if (!_FB_http.begin(_FB_client, req)) return 4;  // ошибка подключения
+        if (_FB_http.GET() != HTTP_CODE_OK) {
+            _FB_http.end();
+            return 3;   // ошибка сервера телеграм
+        }
+        
+        // была попытка OTA обновления. Обновляемся после ответа серверу!
+        if (OTAstate >= 0) {
+            String ota;
+            if (OTAstate == 0) ota = F("error");
+            else if (OTAstate == 1) ota = F("no updates");
+            else if (OTAstate == 2) ota = F("OK");
+            sendMessage(ota, _otaID);
+            if (OTAstate == 2) ESP.restart();
+            OTAstate = -1;
+        }
+        
+        int size = _FB_http.getSize();
+        ovfFlag = size > 25000;         // 1 полное сообщение на русском языке или ~5 на английском
+        uint8_t status = 1;             // OK
+        if (size) {                     // не пустой ответ?
+            StreamString sstring;
+            if (!ovfFlag && sstring.reserve(size + 1)) {    // не переполнен и хватает памяти
+                _FB_http.writeToStream(&sstring);           // копируем
+                _FB_http.end();                             // завершаем
+                return parseMessages(sstring);              // парсим
+            } else status = 2;                              // переполнение
+        } else status = 3;                                  // пустой ответ        
+        _FB_http.end();
         return status;
     }
     
@@ -360,17 +387,17 @@ public:
     
     // ответить на callback текстом и true - предупреждением
     uint8_t answer() {
-        if (!_query) return 5;
+        if (!_query_ptr) return 5;
         String req;
         _addToken(req);
         req += F("/answerCallbackQuery?callback_query_id=");
-        req += *_query;
-        _query = nullptr;
+        req += *_query_ptr;
+        _query_ptr = nullptr;
         return sendRequest(req);
     }
     
     uint8_t answer(const String& text, bool alert = false) {
-        if (!_query) return 5;
+        if (!_query_ptr) return 5;
         #ifndef FB_NO_URLENCODE
         String utext;
         FB_urlencode(text, utext);
@@ -378,14 +405,14 @@ public:
         String req;
         _addToken(req);
         req += F("/answerCallbackQuery?callback_query_id=");
-        req += *_query;
+        req += *_query_ptr;
         #ifndef FB_NO_URLENCODE
         _addText(req, utext);
         #else
         _addText(req, text);
         #endif
         if (alert) req += F("&show_alert=True");
-        _query = nullptr;
+        _query_ptr = nullptr;
         return sendRequest(req);
     }
     
@@ -603,21 +630,12 @@ public:
     }
     
     uint8_t sendRequest(String& req) {
+        if (!_FB_http.begin(_FB_client, req)) return 4; // ошибка подключения
         uint8_t status = 1;
-        if (_FB_httpReq.begin(_FB_client, req)) {
-            if (_FB_httpReq.GET() != HTTP_CODE_OK) status = 3;
-            const String& answ = _FB_httpReq.getString();
-            int16_t st = 0;
-            String buf;
-            if (find(answ, buf, st, F("\"message_id\":"), ',', answ.length())) {
-                _lastBotMsg = buf.toInt();
-            }
-            if (find(answ, buf, st, F("\"date\":"), ',', answ.length())) {
-                _unix = buf.toInt();
-                _lastUpd = millis();
-            }
-            _FB_httpReq.end();
-        } else status = 4;
+        if (_FB_http.GET() == HTTP_CODE_OK && _FB_http.getSize()) {     // есть ответ и он не пустой
+            parseRequest(_FB_http.getString());         // парсим
+        } else status = 3;                              // некорректный ответ
+        _FB_http.end();
         return status;
     }
     
@@ -657,6 +675,17 @@ public:
     // проверка, синхронизировано ли время
     bool timeSynced() {
         return _unix;
+    }
+    
+    uint8_t update() {
+        if (!_file_ptr) return 5;
+        sendMessage(F("OTA update..."), _otaID);
+        String req;
+        _addToken(req);
+        req += F("/getFile?file_id=");
+        req += *_file_ptr;
+        _file_ptr = nullptr;
+        return sendRequest(req);
     }
 
 private:
@@ -731,9 +760,7 @@ private:
         return (strPos > 0) && (strPos < end);
     }
 
-    uint8_t parse(const String& str, uint16_t size) {
-        ovfFlag = size > 25000;     // 1 полное сообщение на русском языке или ~5 на английском
-        if (ovfFlag) return 2;
+    uint8_t parseMessages(const String& str) {
         if (!str.startsWith(F("{\"ok\":true"))) return 3;       // ошибка запроса (неправильный токен итд)
         int16_t IDpos = str.indexOf(F("{\"update_id\":"), 0);   // первая позиция ключа update_id
         
@@ -749,10 +776,11 @@ private:
             
             String query;
             int16_t queryEnd = 0;
+            if (_query_ptr) _query_ptr = nullptr;
             if (find(str, query, textPos, F("\"callback_query\":{\"id\":\""), ',', IDpos)) {
-                _query = &query;
+                _query_ptr = &query;
                 queryEnd = textPos;
-            } else _query = nullptr;
+            }
             
             bool edited = find(str, F("\"edited_message\":"), textPos, IDpos);
             
@@ -778,6 +806,16 @@ private:
             String date;
             find(str, date, textPos, F("\"date\":"), ',', IDpos);
             
+            String file;
+            if (_file_ptr) _file_ptr = nullptr;
+            if (find(str, file, textPos, F("\"file_name\":\""), '\"', IDpos)) {
+                if (file.endsWith(F(".bin"))) {
+                    find(str, file, textPos, F("\"file_id\":\""), '\"', IDpos);
+                    _file_ptr = &file;
+                    _otaID = chatID;
+                }
+            }
+            
             // удаление сервисных сообщений
             if (clrSrv) {
                 if (find(str, F("\"new_chat_title\""), textPos, IDpos) ||
@@ -788,7 +826,8 @@ private:
             }
             
             String text;
-            find(str, text, textPos, F("\"text\":\""), '\"', IDpos);
+            if (_file_ptr) find(str, text, textPos, F("\"caption\":\""), '\"', IDpos);
+            else find(str, text, textPos, F("\"text\":\""), '\"', IDpos);
             
             String data;
             find(str, data, textPos, F("\"data\":\""), '\"', IDpos);
@@ -805,9 +844,10 @@ private:
                 _lastUsrMsg,
                 text,
                 data,
-                (bool)_query,
+                (bool)_query_ptr,
                 edited,
                 is_bot[0] == 't',
+                (bool)_file_ptr,
                 (uint32_t)date.toInt(),
                 
                 // legacy
@@ -817,16 +857,46 @@ private:
                 _lastUsrMsg,
             };
             _callback(msg);
-            if (_query) answer();   // отвечаем на коллбэк, если юзер не ответил
+            if (_query_ptr) answer();   // отвечаем на коллбэк, если юзер не ответил
+            if (OTAstate >= 0) break;   // обновление! выходим
             yield();
         }
         if (_incr) ID += counter;
         return 1;
     }
+    
+    void parseRequest(const String& answ) {
+        int16_t st = 0;
+        String buf;
+        if (find(answ, buf, st, F("\"message_id\":"), ',', answ.length())) {
+            _lastBotMsg = buf.toInt();
+        }
+        if (find(answ, buf, st, F("\"date\":"), ',', answ.length())) {
+            _unix = buf.toInt();
+            _lastUpd = millis();
+        }
+        if (find(answ, buf, st, F("\"file_path\":\""), '\"', answ.length())) {
+            String url(F("https://api.telegram.org/file/bot"));
+            url += _token;
+            url += '/';
+            url += buf;
+            #ifdef ESP8266
+            ESPhttpUpdate.rebootOnUpdate(false);
+            OTAstate = ESPhttpUpdate.update(_FB_client, url);
+            #else
+            WiFiClientSecure client;
+            client.setInsecure();
+            httpUpdate.rebootOnUpdate(false);
+            OTAstate = httpUpdate.update(client, url);
+            #endif
+        }
+    }
 
     void (*_callback)(FB_msg& msg) = nullptr;
     String _token;
-    String* _query = nullptr;
+    String _otaID;
+    String* _file_ptr = nullptr;
+    String* _query_ptr = nullptr;
     uint16_t _ovf, _prd, _limit;
     int32_t ID = 0;
     uint32_t tmr = 0;
@@ -836,6 +906,7 @@ private:
     bool notif = true;
     bool clrSrv = false;
     bool ovfFlag = 0;
+    int8_t OTAstate = -1;
     
     uint32_t _unix = 0;
     uint32_t _lastUpd = 0;
