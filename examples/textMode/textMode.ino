@@ -18,7 +18,8 @@ void setup() {
   bot.sendMessage(F("*Bold*, ||spoiler||, ~Strike~, `code`, [alexgyver\\.ru](https://alexgyver\\.ru/)"));
 
   // пример из доки
-  bot.sendMessage(F("bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold"));
+  // https://core.telegram.org/bots/update56kabdkb12ibuisabdubodbasbdaosd
+  bot.sendMessage(F("*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*"));
 }
 
 /*
