@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.13-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.14-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -95,6 +95,7 @@ FastBot bot(токен); // с указанием токена
 // ============== НАСТРОЙКИ ==============
 void setToken(String token);                    // изменить/задать токен бота
 void setChatID(String chatID);                  // установка ID чата (белый список), необязательно. Можно несколько через запятую ("id1,id2,id3")
+void setChatID(int64_t id);                     // то же самое, но в int64_t. Передай 0, чтобы отключить
 void setPeriod(int period);                     // период опроса в мс (по умолч. 3500)
 void setLimit(int limit);                       // кол-во сообщений, которое обрабатывается за один запрос, 1..100. (по умолч. 10)
 void setBufferSizes(uint16_t rx, uint16_t tx);  // установить размеры буфера на приём и отправку, по умолч. 512 и 512 байт (только для esp8266)
@@ -222,19 +223,35 @@ uint8_t sendCommand(String& cmd, String& id);
 
 
 // ================ СЕРВИС ===============
-int32_t lastBotMsg();                           // ID последнего отправленного ботом сообщения
-int32_t lastUsrMsg();                           // ID последнего отправленного юзером сообщения
-String chatIDs;                                 // указанная в setChatID строка, для отладки и редактирования списка
+int32_t lastBotMsg();               // ID последнего отправленного ботом сообщения
+int32_t lastUsrMsg();               // ID последнего отправленного юзером сообщения
+String chatIDs;                     // указанная в setChatID строка, для отладки и редактирования списка
 
-uint8_t sendRequest(String& req);               // отправить запрос (https://api.telegram.org/bot...)
-void autoIncrement(boolean incr);               // авто инкремент сообщений (по умолч включен)
-void incrementID(uint8_t val);                  // вручную инкрементировать ID на val
+uint8_t sendRequest(String& req);   // отправить запрос (https://api.telegram.org/bot...)
+void autoIncrement(boolean incr);   // авто инкремент сообщений (по умолч включен)
+void incrementID(uint8_t val);      // вручную инкрементировать ID на val
+
+
+// ============== СООБЩЕНИЕ ===============
+// структура FB_msg
+String& userID;     // ID юзера
+String& username;   // ник (в API это first_name)
+String& chatID;     // ID чата
+int32_t messageID;  // ID сообщения
+String& text;       // текст
+String& data;       // callback дата
+bool query;         // запрос
+bool& edited;       // сообщение отредактировано
+bool isBot;         // сообщение от бота
+bool OTA;           // запрос на OTA обновление
+uint32_t unix;      // время сообщения
+String toString();  // вся информация одной строкой
 
 
 // ================ ВРЕМЯ =================
-FB_Time getTime(int16_t gmt);       // получить текущее время, указать часовой пояс (например Москва 3) в часах или минутах
-bool timeSynced();                  // проверка, синхронизировано ли время
-uint32_t getUnix();                 // получить текущее unix время
+FB_Time getTime(int16_t gmt);   // получить текущее время, указать часовой пояс (например Москва 3) в часах или минутах
+bool timeSynced();              // проверка, синхронизировано ли время
+uint32_t getUnix();             // получить текущее unix время
 
 // структура FB_Time
 uint8_t second;         // секунды
@@ -244,8 +261,8 @@ uint8_t day;            // день месяца
 uint8_t month;          // месяц
 uint8_t dayWeek;        // день недели (пн..вс 1..7)
 uint16_t year;          // год
-String timeString();    // получить строку времени формата ЧЧ:ММ:СС
-String dateString();    // получить строку даты формата ДД.ММ.ГГГГ
+String timeString();    // строка времени формата ЧЧ:ММ:СС
+String dateString();    // строка даты формата ДД.ММ.ГГГГ
 
 
 // =============== СТАТУС ================
@@ -260,10 +277,19 @@ String dateString();    // получить строку даты формата
 // 7 - не подключен обработчик
 
 
-// ========== ДЕФАЙНЫ НАСТРОЕК ==========
+// =============== УТИЛИТЫ ===============
+void FB_unicode(String &s);                 // перевести unicode
+void FB_urlencode(String& s, String& dest); // urlencode из s в dest
+
+int64_t FB_str64(const String &s);  // перевод из String в int64_t
+String FB_64str(int64_t id);        // перевод из int64_t в String
+
+
+// ========== ДЕФАЙНЫ НАСТРОЕК ===========
 // объявлять ПЕРЕД подключением библиотеки
-#define FB_NO_UNICODE   // отключить конвертацию Unicode для входящих сообщений (чуть ускорит программу)
-#define FB_NO_URLENCODE // отключить конвертацию urlencode для исходящих сообщений (чуть ускорит программу)
+#define FB_NO_UNICODE       // отключить конвертацию Unicode для входящих сообщений (чуть ускорит программу)
+#define FB_NO_URLENCODE     // отключить конвертацию urlencode для исходящих сообщений (чуть ускорит программу)
+#define FB_NO_OTA           // отключить поддержку OTA обновлений из чата
 ```
 
 <a id="usage"></a>
@@ -586,6 +612,7 @@ if (msg.OTA && msg.chatID == "123456") bot.update();
 
 - v2.12: поправлены примеры, исправлен парсинг isBot, переделан механизм защиты от длинных сообщений, переделана инициализация
 - v2.13: Оптимизация памяти. Добавил OTA обновление
+- v2.14: Опциональное отключение OTA, фильтр getUpdates, улучшил парсинг списка ID
 
 <a id="feedback"></a>
 ## Баги и обратная связь
