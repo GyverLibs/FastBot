@@ -817,7 +817,7 @@ private:
             
             if (!first_name.length()) {
                 int typePos = str.indexOf("\"type\"", textPos);
-                find(str, first_name, textPos, F("\"title\":\""), '\"', IDpos);
+                find(str, first_name, textPos, F("\"title\":\""), '\"', typePos);
             }
             
             if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;  // проверка на ID чата
