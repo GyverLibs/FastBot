@@ -3,20 +3,19 @@
     Документация: 
     GitHub: https://github.com/GyverLibs/FastBot
     Возможности:
-    - Работает на стандартных библиотеках
-    - Работает без SSL
-    - Оптимизирована для большой нагрузки
-    - Опциональный белый список ID чатов
+    - Работает на стандартных библиотеках без SSL
+    - Опциональный "белый список" ID чатов
     - Проверка обновлений вручную или по таймеру
     - Отправка/удаление/редактирование/ответ на сообщения
-    - Отправка стикеров
-    - Вывод меню и инлайн меню (с поддержкой ссылок)
+    - Работает (чтение и отправка) в чатах, группах, каналах
     - Изменение названия и описания чата
     - Закрепление/открепление сообщений
+    - Отправка стикеров, отправка с форматированием markdown/html
+    - Вывод обычного и инлайн меню с поддержкой кнопок-ссылок
     - Поддержка Unicode (другие языки + эмодзи) для входящих сообщений
     - Встроенный urlencode для исходящих сообщений
     - Встроенные часы реального времени с синхронизацией от сервера Telegram
-    - Возможность OTA обновления прошивки файлом из чата Telegram
+    - Возможность OTA обновления прошивки .bin файлом из чата Telegram
     
     AlexGyver, alex@alexgyver.ru
     https://alexgyver.ru/
@@ -80,6 +79,7 @@
         - Окончательно убран старый обработчик входящих сообщений
     v2.12: поправлены примеры, исправлен парсинг isBot, переделан механизм защиты от длинных сообщений, переделана инициализация
     v2.13: Оптимизация памяти. Добавил OTA обновление
+    v2.14: Улучшен парсинг строки с ID, добавил отключение OTA, добавил парсинг названия группы/канала в username
 */
 
 /*
@@ -107,19 +107,25 @@
 #include <Arduino.h>
 #include <StreamString.h>
 #include "utils.h"
+#include "datatypes.h"
 
 #ifdef ESP8266
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#ifndef FB_NO_OTA
 #include <ESP8266httpUpdate.h>
+#endif
 #include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
 static BearSSL::WiFiClientSecure _FB_client;
 static HTTPClient _FB_http;
-#else
+
+#else   // ESP32
 #include <WiFi.h>
 #include <HTTPClient.h>
+#ifndef FB_NO_OTA
 #include <HTTPUpdate.h>
+#endif
 #include <WiFiClientSecure.h>
 WiFiClientSecure _FB_client;
 static HTTPClient _FB_http;
@@ -162,6 +168,10 @@ public:
     void setChatID(const String& chatID) {
         chatIDs = chatID;        
     }
+    void setChatID(int64_t id) {
+        if (id) chatIDs = FB_64str(id);
+        else chatIDs = "";
+    }
     
     void setToken(const String& token) {
         _token = token;
@@ -192,11 +202,13 @@ public:
     uint8_t tickManual() {
         if (!*_callback) return 7;
         String req;
+        req.reserve(120);
         _addToken(req);
         req += F("/getUpdates?limit=");
         req += ovfFlag ? 1 : _limit;    // берём по 1 сообщению если переполнен
         req += F("&offset=");
         req += ID;
+        //req += F("&allowed_updates=[\"update_id\",\"message\",\"edited_message\",\"channel_post\",\"edited_channel_post\",\"callback_query\"]");
         
         if (!_FB_http.begin(_FB_client, req)) return 4;  // ошибка подключения
         if (_FB_http.GET() != HTTP_CODE_OK) {
@@ -204,6 +216,7 @@ public:
             return 3;   // ошибка сервера телеграм
         }
         
+        #ifndef FB_NO_OTA
         // была попытка OTA обновления. Обновляемся после ответа серверу!
         if (OTAstate >= 0) {
             String ota;
@@ -214,6 +227,7 @@ public:
             if (OTAstate == 2) ESP.restart();
             OTAstate = -1;
         }
+        #endif
         
         int size = _FB_http.getSize();
         ovfFlag = size > 25000;         // 1 полное сообщение на русском языке или ~5 на английском
@@ -801,11 +815,17 @@ private:
             String chatID;
             find(str, chatID, textPos, F("\"chat\":{\"id\":"), ',', IDpos);
             
+            if (!first_name.length()) {
+                int typePos = str.indexOf("\"type\"", textPos);
+                find(str, first_name, textPos, F("\"title\":\""), '\"', IDpos);
+            }
+            
             if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;  // проверка на ID чата
             
             String date;
             find(str, date, textPos, F("\"date\":"), ',', IDpos);
             
+            #ifndef FB_NO_OTA
             String file;
             if (_file_ptr) _file_ptr = nullptr;
             if (find(str, file, textPos, F("\"file_name\":\""), '\"', IDpos)) {
@@ -815,6 +835,7 @@ private:
                     _otaID = chatID;
                 }
             }
+            #endif
             
             // удаление сервисных сообщений
             if (clrSrv) {
@@ -875,6 +896,7 @@ private:
             _unix = buf.toInt();
             _lastUpd = millis();
         }
+        #ifndef FB_NO_OTA
         if (find(answ, buf, st, F("\"file_path\":\""), '\"', answ.length())) {
             String url(F("https://api.telegram.org/file/bot"));
             url += _token;
@@ -890,6 +912,7 @@ private:
             OTAstate = httpUpdate.update(client, url);
             #endif
         }
+        #endif
     }
 
     void (*_callback)(FB_msg& msg) = nullptr;

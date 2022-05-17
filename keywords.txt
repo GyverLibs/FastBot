@@ -7,9 +7,9 @@
 #######################################
 FastBot	KEYWORD1
 
-FB_Time	LITERAL1
-FB_NO_UNICODE	LITERAL1
-FB_NO_URLENCODE	LITERAL1
+FB_NO_UNICODE	KEYWORD1
+FB_NO_URLENCODE	KEYWORD1
+FB_NO_OTA	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
@@ -79,15 +79,19 @@ day	KEYWORD2
 month	KEYWORD2
 dayWeek	KEYWORD2
 year	KEYWORD2
-
 timeString	KEYWORD2
 dateString	KEYWORD2
 
 FB_unicode	KEYWORD2
+FB_urlencode	KEYWORD2
+FB_str64	KEYWORD2
+FB_64str	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
 #######################################
+FB_Time	LITERAL1
+
 FB_TEXT	LITERAL1
 FB_MARKDOWN	LITERAL1
 FB_HTML	LITERAL1
