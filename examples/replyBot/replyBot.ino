@@ -18,7 +18,7 @@ void newMsg(FB_msg& msg) {
   Serial.println(msg.toString());
 
   // ответить
-  bot.replyMessage("Hello!", msg.ID, msg.chatID);  
+  bot.replyMessage("Hello!", msg.messageID, msg.chatID);  
 }
 
 void loop() {
