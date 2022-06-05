@@ -80,6 +80,7 @@
     v2.12: поправлены примеры, исправлен парсинг isBot, переделан механизм защиты от длинных сообщений, переделана инициализация
     v2.13: Оптимизация памяти. Добавил OTA обновление
     v2.14: Улучшен парсинг строки с ID, добавил отключение OTA, добавил парсинг названия группы/канала в username
+    v2.15: Заплатка для кривой библиотеки ESP32
 */
 
 /*
@@ -117,9 +118,7 @@
 #endif
 #include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
-static BearSSL::WiFiClientSecure _FB_client;
-static HTTPClient _FB_http;
-
+BearSSL::WiFiClientSecure _FB_client;
 #else   // ESP32
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -127,8 +126,6 @@ static HTTPClient _FB_http;
 #include <HTTPUpdate.h>
 #endif
 #include <WiFiClientSecure.h>
-WiFiClientSecure _FB_client;
-static HTTPClient _FB_http;
 #endif
 
 // ================================
@@ -136,6 +133,7 @@ class FastBot {
 public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
     FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 0, uint16_t period = 3600) {
+        _http = new HTTPClient;
         _token.reserve(46);
         chatIDs.reserve(10);
         _token = token;
@@ -143,7 +141,13 @@ public:
         _ovf = ovf;
         _prd = period;
         setBufferSizes(512, 512);
+        #ifdef ESP8266
         _FB_client.setInsecure();
+        #endif
+    }
+    
+    ~FastBot() {
+        if (_http) delete _http;
     }
     
     // ===================== НАСТРОЙКИ =====================
@@ -210,9 +214,18 @@ public:
         req += ID;
         //req += F("&allowed_updates=[\"update_id\",\"message\",\"edited_message\",\"channel_post\",\"edited_channel_post\",\"callback_query\"]");
         
-        if (!_FB_http.begin(_FB_client, req)) return 4;  // ошибка подключения
-        if (_FB_http.GET() != HTTP_CODE_OK) {
-            _FB_http.end();
+        #ifdef ESP8266
+        if (!_http->begin(_FB_client, req)) return 4;  // ошибка подключения
+        #else
+        if (!_http->begin(req)) return 4;   // ошибка подключения
+        #endif
+        int answ = _http->GET();
+        if (answ != HTTP_CODE_OK) {
+            _http->end();
+            if (answ == -1 && _http) {      // заплатка для есп32
+                delete _http;
+                _http = new HTTPClient;
+            }
             return 3;   // ошибка сервера телеграм
         }
         
@@ -229,18 +242,18 @@ public:
         }
         #endif
         
-        int size = _FB_http.getSize();
+        int size = _http->getSize();
         ovfFlag = size > 25000;         // 1 полное сообщение на русском языке или ~5 на английском
         uint8_t status = 1;             // OK
         if (size) {                     // не пустой ответ?
             StreamString sstring;
             if (!ovfFlag && sstring.reserve(size + 1)) {    // не переполнен и хватает памяти
-                _FB_http.writeToStream(&sstring);           // копируем
-                _FB_http.end();                             // завершаем
+                _http->writeToStream(&sstring);             // копируем
+                _http->end();                               // завершаем
                 return parseMessages(sstring);              // парсим
             } else status = 2;                              // переполнение
         } else status = 3;                                  // пустой ответ        
-        _FB_http.end();
+        _http->end();
         return status;
     }
     
@@ -644,12 +657,29 @@ public:
     }
     
     uint8_t sendRequest(String& req) {
-        if (!_FB_http.begin(_FB_client, req)) return 4; // ошибка подключения
+        #ifdef ESP8266
+        if (!_http->begin(_FB_client, req)) return 4;  // ошибка подключения
+        #else
+        if (!_http->begin(req)) return 4;
+        #endif
+        int answ = _http->GET();
+        if (answ == -1 && _http) {       // заплатка для есп32
+            _http->end();
+            delete _http;
+            _http = new HTTPClient;
+            // постучимся ещё раз
+            #ifdef ESP8266
+            if (!_http->begin(_FB_client, req)) return 4;  // ошибка подключения
+            #else
+            if (!_http->begin(req)) return 4;
+            #endif
+            answ = _http->GET();
+        }
         uint8_t status = 1;
-        if (_FB_http.GET() == HTTP_CODE_OK && _FB_http.getSize()) {     // есть ответ и он не пустой
-            parseRequest(_FB_http.getString());         // парсим
-        } else status = 3;                              // некорректный ответ
-        _FB_http.end();
+        if (answ == HTTP_CODE_OK && _http->getSize()) {     // есть ответ и он не пустой
+            parseRequest(_http->getString());       // парсим
+        } else status = 3;                          // некорректный ответ
+        _http->end();
         return status;
     }
     
@@ -914,7 +944,8 @@ private:
         }
         #endif
     }
-
+    
+    HTTPClient *_http = nullptr;
     void (*_callback)(FB_msg& msg) = nullptr;
     String _token;
     String _otaID;
