@@ -16,6 +16,9 @@ Very simple and fast library for telegram bot on esp8266/esp32
 - Built-in real time clock with synchronization from the Telegram server
 - Possibility of OTA firmware update with .bin file from Telegram chat
 
+### Optional
+Use the [CharDisplay] library(https://github.com/GyverLibs/CharDisplay) to display graphs and draw in chat!
+
 ### Compatibility
 ESP8266 (SDK v2.6+), ESP32
 
@@ -25,7 +28,7 @@ Detailed tutorials on working with the Telegram bot using this library can be fo
 ## Comparison with Universal-Arduino-Telegram-Bot
 [Universal-Arduino-Telegram-Bot](https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot)
 
-For comparison, a minimal example was used with sending a message to the chat and outputting incoming messages to the series:
+For comparison, we used a minimal example with sending a message to the chat and outputting incoming messages to the series:
 - **send** - send a message to the chat
 - **update** - check incoming messages
 - **free heap** - amount of free RAM while the program is running
@@ -59,6 +62,8 @@ For comparison, a minimal example was used with sending a message to the chat an
     - [Time to receive message](#time)
     - [Real Time Clock](#rtc)
     - [Firmware update from chat](#ota)
+    - [Text styling](#textmode)
+    - [All sorts of tricks](#tricks)
 - [Versions](#versions)
 - [Bugs and feedback](#feedback)
 
@@ -70,9 +75,9 @@ For comparison, a minimal example was used with sending a message to the chat an
     - PlatformIO
 - [Download library](https://github.com/GyverLibs/FastBot/archive/refs/heads/main.zip) .zip archive for manual installation:
     - Unzip and put in *C:\Program Files (x86)\Arduino\libraries* (Windows x64)
-    - Unzip and put in *C:\Program Files\Arduino\libraries* (Windows x32)
+    - Unpack and putin *C:\Program Files\Arduino\libraries* (Windows x32)
     - Unpack and put in *Documents/Arduino/libraries/*
-    - (Arduino IDE) automatic installation from .zip: *Sketch/Include Library/Add.ZIP library…* and specify the downloaded archive
+    - (Arduino IDE) automatic installation from .zip: *Sketch/Include library/Add .ZIP library…* and specify the downloaded archive
 - Read more detailed instructions for installing libraries [here] (https://alexgyver.ru/arduino-first/#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE% D0%B2%D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)
 
 <a id="init"></a>
@@ -152,10 +157,10 @@ uint8_t closeMenu();
 uint8_t closeMenu(String id);
 
 
-// ======== REGULAR MENU WITH TEXT =========
+// ======== REGULAR MENU WITH TEXTOM =========
 // message (msg) + show menu (menu) in the chat/chats specified in setChatID OR pass the id of the chat/chats
 uint8_t showMenuText(String msg, String menu);
-uint8_t showMenuText(String msg, Stringmenu, String id);
+uint8_t showMenuText(String msg, String menu, String id);
 
 // one-time menu (will close when selected)
 uint8_t showMenuText(String msg, String menu, true);
@@ -246,12 +251,12 @@ String toString(); // all information in one line
 // ================ TIME =================
 FB_Time getTime(int16_t gmt); // get the current time, specify the time zone (for example, Moscow 3) in hours or minutes
 booltimeSynced(); // check if the time is synchronized
-uint32_t getUnix();// get the current unix time
+uint32_t getUnix(); // get the current unix time
 
 // FB_Time structure
 uint8_t second; // seconds
 uint8_t minute; // minutes
-uint8_t hour; // clock
+uint8_t hour; // watch
 uint8_t day; // day of the month
 uint8_tmonth; // month
 uint8_tdayWeek; // day of the week (Mon..Sun 1..7)
@@ -315,6 +320,8 @@ Telegram sets the following limits on **sending** messages by the bot ([document
 - To a group: no more than 20 messages per minute
 - Total limit: no more than 30 messages per second
 
+The bot can also read messages that are less than 24 hours old.
+
 <a id="inbox"></a>
 ## Message parsing
 Messages are automatically requested and read in `tick()`, when a new message arrives, the specified handler function is called:
@@ -328,15 +335,17 @@ Messages are automatically requested and read in `tick()`, when a new message ar
     - `String chatID` - chat ID
     - `int32_t messageID` - message ID in the chat
     - `String text` - message text or file caption
-    - `String data` - callback data from the menu (if any)
-    - `bool query` - query
+    - `String data` - callback data from the menu (if any)- `bool query` - query
     - `bool edited` - message has been edited
     - `bool isBot` - message from bot
     - `bool OTA` - request for OTA update (received .bin file)
     - `uint32_t unix` - message time
-    - `String toString()` - all information from the message, useful for debuggingki (since version 2.11)
+    - `String fileName` - file name
+    - `String toString()` - all information from the message, convenient for debugging (since 2.11)
 
-> Note: Telegram splits the text into several messages if the text length exceeds ~4000 characters! These messages will have a different messageID in the chat.
+**Notes:**
+- Telegram splits the text into several messages if the text length exceeds ~4000 characters! These messages will have a different messageID in the chat.
+- When replying to a message, the library parses the text of the original message, not the answer
 
 ### White list
 The library implements a white list mechanism: you can specify in `setChatID()` the ID of a chat (or several, separated by commas), messages from which will be accepted.
@@ -433,7 +442,7 @@ Menu in the message. Allows you to set a unique text for each button, which will
 The list of callbacks is listed separated by commas in the order of the menu buttons:
 ```cpp
 String menu1 = F("Menu 1 \t Menu 2 \t Menu 3 \n Back");
-String cback1 = F("action1,action2,action3,back");
+String cback1 = F("action1,acaction2,action3,back");
 bot.inlineMenuCallback("Menu 1", menu1, cback1);
 ```
 Clicking the button sends the menu name (the `text` message field) and the specified data (the `data` message field).
@@ -441,7 +450,7 @@ Clicking the button sends the menu name (the `text` message field) and the speci
 
 <a id="answer"></a>
 ## Response to callback
-When you click on the inline menu button, a callback is sent to the bot, in the message handlerwill raise the `query` flag. The Telegram server will wait for a response.
+When you click on the inline menu button, a callback is sent to the bot, the `query` flag will be raised in the message handler. The Telegram server will wait for a response.
 You can respond to the callback with:
 - `answer(text, FB_NOTIF)` - popup notification text
 - `answer(text, FB_ALERT)` - warning window and OK button
@@ -461,7 +470,7 @@ The library has a data type `FB_Time`, which is a structure with fields:
 ```cpp
 uint8_t second; // seconds
 uint8_t minute; // minutes
-uint8_t hour; // clock
+uint8_t hour; // watch
 uint8_t day; // day of the month
 uint8_tmonth; // month
 uint8_tdayWeek; // day of the week (Mon..Sun 1..7)
@@ -511,9 +520,9 @@ void newMsg(FB_msg& msg) {
 In response to any message from the bot, the server reports the time of sending in unix format. Since version 2.6 this time is parsed
 library and **count continues on** using standard time functions. Thus, it is enough to send once
 message after the board is turned on, so that the library synchronizes the clock. The time will also be synchronized on further sendings.
-and to be specified, because the time calculated by means of esp will go away (~ 2 seconds per day). Instruments:
+and to be specified, because the time calculated by means of esp will go away (~ 2 seconds per day). Tools:
 
-- `uint32_t getUnix()` - returns the current time in unix format or `0` if the time is out of sync.
+- `uint32_t getUnix()` - returns the current time in unix format, or `0` if the time is out of sync.
 - `bool timeSynced()` - will return `true` if the clock is synchronized.
 - `FB_Time getTime(gmt)` - you need to pass your time zone, it will return `FB_Time`.
 
@@ -537,7 +546,7 @@ Since version 2.13 of the library, a firmware update has appeared "over the air"
 - After a successful update, the esp will reboot
 
 ```cpp
-// update if just sent a bin file
+// update if justsent bin file
 if (msg.OTA) bot.update();
 
 // update if the file has the desired signature
@@ -547,12 +556,54 @@ if (msg.OTA && msg.text == "update") bot.update();
 if (msg.OTA && msg.chatID == "123456") bot.update();
 ```
 
+<a id="textmode"></a>
+## Text decoration
+The library supports the design of text in messages. The layout markup is selected using `setTextMode(mode)`, where `mode` is:
+- `FB_TEXT` - default (decoration disabled)
+- `FB_MARKDOWN` - Markdown v2 markup
+- `FB_HTML` - HTML markup
+
+Available tags are described in [Telegram API](https://core.telegram.org/bots/api#formatting-options). For example for Markdown:
+```cpp
+bot.setTextMode(FB_MARKDOWN);
+bot.sendMessage(F("*Bold*, ~Strike~, `code`, [alexgyver.ru](https://alexgyver.ru/)"));
+```
+
+Output to chat: **Bold**, ~~Strike~~, `code`, [alexgyver.ru](https://alexgyver.ru/)
+
+> **Attention!** In FB_MARKDOWN mode, you cannot use `! + #`, the message will not be sent. It may be possible to fix it in the future (the problem of urlencode and escaping reserved characters).
+
+
+<a id="tricks"></a>
+## Tricks
+### Reboot
+Messages are marked as read at the next (relative to the current message handler) update in tick(), i.e. after at least the configured timeout.
+If you want to reload esp on command, then here's the design
+```cpp
+void message(FB_msg &msg) {
+  if (msg.text == "restart") ESP.restart();
+}
+```
+Will lead to a bootloop (infinite reboot), because the message will not be marked as read. You can raise the flag to go into reboot by calling tickManual first:
+```cpp
+bool res = 0;
+void message(FB_msg &msg) {
+  if (msg.text == "restart") res = 1;
+}
+void loop() {
+  if (res) {
+    bot.tickManual();
+    ESP.restart();
+  }
+}
+```
+
 <a id="versions"></a>
 ## Versions
 - v1.0
 - v1.1 - optimization
 - v1.2 - you can set several chatIDs and send to the specified chat
-- v1.3 - added the ability totext when opening and closing menus
+- v1.3 - added the ability to set text when opening and closing the menu
 - v1.3.1 - fixed bugs since 1.3
 - v1.4 - added the ability to delete messages
 - v1.5 - optimization, the ability to change the token, new message parsing (id, name, text)
@@ -599,7 +650,7 @@ if (msg.OTA && msg.chatID == "123456") bot.update();
     - Callback data is now parsed separately in data
     - Redesigned work with callback
     - Added toString() for FB_msg for debugging
-    - Added processing of url addresses in callback
+    - Processing added to callbackcranberry url addresses
     - Removed first_name and last_name (preserving legacy)
     - usrID and ID renamed to userID and messageID (preserving legacy)
     - Completely removed the old incoming message handler
@@ -607,6 +658,8 @@ if (msg.OTA && msg.chatID == "123456") bot.update();
 - v2.12: examples fixed, isBot parsing fixed, long message protection mechanism redone, initialization redone
 - v2.13: Memory optimization. Added OTA update
 - v2.14: Improved ID string parsing, added OTA disable, added group/channel name parsing to username
+- v2.15: ESP32 library curve patch
+- v2.16: added fileName output, fixed unsent messages in Markdown mode
 
 <a id="feedback"></a>
 ## Bugs and feedback
