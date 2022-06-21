@@ -13,6 +13,7 @@ struct FB_msg {
     bool isBot;         // сообщение от бота
     bool OTA;           // запрос на OTA обновление
     uint32_t unix;      // время сообщения
+    String& fileName;   // имя файла
     
     // legacy
     String& usrID;      // ID юзера

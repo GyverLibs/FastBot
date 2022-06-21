@@ -81,6 +81,7 @@
     v2.13: Оптимизация памяти. Добавил OTA обновление
     v2.14: Улучшен парсинг строки с ID, добавил отключение OTA, добавил парсинг названия группы/канала в username
     v2.15: Заплатка для кривой библиотеки ESP32
+    v2.16: добавлен вывод fileName, пофикшены неотправляемые сообщения в Markdown режиме
 */
 
 /*
@@ -327,6 +328,7 @@ public:
         #ifndef FB_NO_URLENCODE
         String umsg;
         FB_urlencode(msg, umsg);
+        if (parseMode == FB_MARKDOWN) FB_escMarkdown(umsg);
         #endif
         String req;
         _addToken(req);
@@ -368,6 +370,7 @@ public:
         #ifndef FB_NO_URLENCODE
         String utext;
         FB_urlencode(text, utext);
+        if (parseMode == FB_MARKDOWN) FB_escMarkdown(utext);
         #endif
         String req;
         _addToken(req);
@@ -428,6 +431,7 @@ public:
         #ifndef FB_NO_URLENCODE
         String utext;
         FB_urlencode(text, utext);
+        if (parseMode == FB_MARKDOWN) FB_escMarkdown(utext);
         #endif
         String req;
         _addToken(req);
@@ -554,6 +558,7 @@ public:
         #ifndef FB_NO_URLENCODE
         String umsg;
         FB_urlencode(msg, umsg);
+        if (parseMode == FB_MARKDOWN) FB_escMarkdown(umsg);
         #endif
         String req;
         _addToken(req);
@@ -594,6 +599,7 @@ public:
         #ifndef FB_NO_URLENCODE
         String umsg;
         FB_urlencode(msg, umsg);
+        if (parseMode == FB_MARKDOWN) FB_escMarkdown(umsg);
         #endif
         String req;
         _addToken(req);
@@ -626,6 +632,7 @@ public:
         #ifndef FB_NO_URLENCODE
         String umsg;
         FB_urlencode(msg, umsg);
+        if (parseMode == FB_MARKDOWN) FB_escMarkdown(umsg);
         #endif
         String req;
         _addToken(req);
@@ -857,8 +864,10 @@ private:
             
             #ifndef FB_NO_OTA
             String file;
+            String fileName;
             if (_file_ptr) _file_ptr = nullptr;
             if (find(str, file, textPos, F("\"file_name\":\""), '\"', IDpos)) {
+                fileName = file;
                 if (file.endsWith(F(".bin"))) {
                     find(str, file, textPos, F("\"file_id\":\""), '\"', IDpos);
                     _file_ptr = &file;
@@ -900,6 +909,7 @@ private:
                 is_bot[0] == 't',
                 (bool)_file_ptr,
                 (uint32_t)date.toInt(),
+                fileName,
                 
                 // legacy
                 userID,

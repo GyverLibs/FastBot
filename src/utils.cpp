@@ -1,5 +1,32 @@
 #include "utils.h"
 
+void FB_escHTML(String& s) {
+    String out;
+    out.reserve(s.length());
+    for (uint16_t i = 0; i < s.length(); i++) {
+        switch (s[i]) {
+        case '<': out += F("&lt;"); break;
+        case '>': out += F("&gt;"); break;
+        case '&': out += F("&amp;"); break;
+        default: out += s[i]; break;
+        }
+    }
+    s = out;
+}
+
+static const char FB_escList[] = ">-={}.!";
+
+void FB_escMarkdown(String& s) {
+    String out;
+    out.reserve(s.length());
+    for (uint16_t i = 0; i < s.length(); i++) {
+        if (strchr(FB_escList, s[i]) != 0) out += '\\';
+        out += s[i];
+    }
+    Serial.println(out);
+    s = out;
+}
+
 int64_t FB_str64(const String &s) {
     return atoll(s.c_str());
 }
@@ -8,10 +35,10 @@ String FB_64str(int64_t id) {
     int32_t s1 = (int64_t)id % 1000000000;
     int32_t s2 = (int64_t)id / 1000000000;
     if (s2) {
-      s += s2;
-      s += abs(s1);
+        s += s2;
+        s += abs(s1);
     } else {
-      s += s1;
+        s += s1;
     }
     return s;
 }
@@ -74,7 +101,7 @@ void FB_unicode(String &uStr) {
                     out += (char)(0b10000000 | (uBytes & 0b111111));
                 }
                 break;
-                default: out += uStr[i]; break;
+            default: out += uStr[i]; break;
             }
         }
     }

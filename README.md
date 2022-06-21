@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.15-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.16-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -66,6 +66,7 @@ ESP8266 (SDK v2.6+), ESP32
     - [Время получения сообщения](#time)
     - [Часы реального времени](#rtc)
     - [Обновление прошивки из чата](#ota)
+    - [Оформление текста](#textmode)
     - [Всякие трюки](#tricks)
 - [Версии](#versions)
 - [Баги и обратная связь](#feedback)
@@ -344,6 +345,7 @@ bot.sendMessage("Hello!", "112233"); // уйдёт в "112233"
     - `bool isBot` - сообщение от бота
     - `bool OTA` - запрос на OTA обновление (получен .bin файл)
     - `uint32_t unix` - время сообщения
+    - `String fileName` - имя файла
     - `String toString()` - вся информация из сообщения, удобно для отладки (с версии 2.11)
 
 **Примечания:**
@@ -559,6 +561,23 @@ if (msg.OTA && msg.text == "update") bot.update();
 if (msg.OTA && msg.chatID == "123456") bot.update();
 ```
 
+<a id="textmode"></a>
+## Оформление текста
+Библиотека поддерживает оформление текста в сообщениях. Разметка оформления выбирается при помощи `setTextMode(mode)`, где `mode`:
+- `FB_TEXT` - по умолчанию (оформление отключено)
+- `FB_MARKDOWN`	- разметка Markdown v2
+- `FB_HTML`	- разметка HTML
+
+Доступные теги описаны в [API Telegram](https://core.telegram.org/bots/api#formatting-options). Например для Markdown:
+```cpp
+bot.setTextMode(FB_MARKDOWN);
+bot.sendMessage(F("*Bold*, ~Strike~, `code`, [alexgyver.ru](https://alexgyver.ru/)"));
+```
+
+Выведет в чат: **Bold**, ~~Strike~~, `code`, [alexgyver.ru](https://alexgyver.ru/)
+
+> **Внимание!** В режиме FB_MARKDOWN нельзя использовать в сообщениях символы `! + #`, сообщение не отправится. Возможно получится исправить в будущем (проблема urlencode и экранирования зарезервированных символов).
+
 
 <a id="tricks"></a>
 ## Трюки
@@ -645,6 +664,7 @@ void loop() {
 - v2.13: Оптимизация памяти. Добавил OTA обновление
 - v2.14: Улучшен парсинг строки с ID, добавил отключение OTA, добавил парсинг названия группы/канала в username
 - v2.15: Заплатка для кривой библиотеки ESP32
+- v2.16: добавлен вывод fileName, пофикшены неотправляемые сообщения в Markdown режиме
 
 <a id="feedback"></a>
 ## Баги и обратная связь

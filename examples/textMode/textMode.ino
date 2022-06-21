@@ -12,32 +12,10 @@ void setup() {
   connectWiFi();
 
   bot.setChatID(CHAT_ID);
-  bot.setTextMode(FB_MARKDOWN);
+  bot.setTextMode(FB_MARKDOWN);     // вернуть по умолчанию - FB_TEXT
   // по форматированию читай тут https://core.telegram.org/bots/api#formatting-options
-  // символ точка . нужно экранировать как \\.
-  bot.sendMessage(F("*Bold*, ||spoiler||, ~Strike~, `code`, [alexgyver\\.ru](https://alexgyver\\.ru/)"));
-
-  // пример из доки
-  // https://core.telegram.org/bots/update56kabdkb12ibuisabdubodbasbdaosd
-  bot.sendMessage(F("*bold _italic bold ~italic bold strikethrough ||italic bold strikethrough spoiler||~ __underline italic bold___ bold*"));
+  bot.sendMessage(F("*Bold*, ||spoiler||, ~Strike~, `code`, [alexgyver.ru](https://alexgyver.ru/)"));
 }
-
-/*
-   bold \*text
-  _italic \*text_
-  __underline__
-  ~strikethrough~
-  ||spoiler||
-  [inline URL](http://www.example.com/)
-  [inline mention of a user](tg://user?id=123456789)
-  `inline fixed-width code`
-  ```
-  pre-formatted fixed-width code block
-  ```
-  ```python
-  pre-formatted fixed-width code block written in the Python programming language
-  ```
-*/
 
 void loop() {
   bot.tick();
