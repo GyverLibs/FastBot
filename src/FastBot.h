@@ -83,6 +83,7 @@
     v2.15: Заплатка для кривой библиотеки ESP32
     v2.16: добавлен вывод fileName, пофикшены неотправляемые сообщения в Markdown режиме
     v2.17: вывод текста сообщения, на которое ответил юзер + корректная работа с menu в группах
+    v2.17.1: мелкий фикс https://github.com/GyverLibs/FastBot/issues/12
 */
 
 /*
@@ -864,9 +865,9 @@ private:
             find(str, date, textPos, F("\"date\":"), ',', IDpos);
             bool reply = find(str, F("\"reply_to_message\""), textPos, IDpos);
             
+            String fileName;
             #ifndef FB_NO_OTA
             String file;
-            String fileName;
             if (_file_ptr) _file_ptr = nullptr;
             if (find(str, file, textPos, F("\"file_name\":\""), '\"', IDpos)) {
                 fileName = file;
