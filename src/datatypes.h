@@ -14,6 +14,7 @@ struct FB_msg {
     bool OTA;           // запрос на OTA обновление
     uint32_t unix;      // время сообщения
     String& fileName;   // имя файла
+    String& replyText;  // текст ответа, если он есть
     
     // legacy
     String& usrID;      // ID юзера
@@ -41,6 +42,8 @@ struct FB_msg {
         s += text;
         s += F(", data: ");
         s += data;
+        s += F(", replyText: ");
+        s += replyText;
         s += '\n';
         
         s += F("query: ");
@@ -51,6 +54,8 @@ struct FB_msg {
         s += isBot;
         s += F(", OTA: ");
         s += OTA;
+        s += F(", fileName: ");
+        s += fileName;
         s += F(", unix: ");
         s += unix;
         s += '\n';

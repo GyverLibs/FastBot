@@ -82,6 +82,7 @@
     v2.14: Улучшен парсинг строки с ID, добавил отключение OTA, добавил парсинг названия группы/канала в username
     v2.15: Заплатка для кривой библиотеки ESP32
     v2.16: добавлен вывод fileName, пофикшены неотправляемые сообщения в Markdown режиме
+    v2.17: вывод текста сообщения, на которое ответил юзер + корректная работа с menu в группах
 */
 
 /*
@@ -861,6 +862,7 @@ private:
             
             String date;
             find(str, date, textPos, F("\"date\":"), ',', IDpos);
+            bool reply = find(str, F("\"reply_to_message\""), textPos, IDpos);
             
             #ifndef FB_NO_OTA
             String file;
@@ -886,8 +888,14 @@ private:
             }
             
             String text;
+            String replyText;
             if (_file_ptr) find(str, text, textPos, F("\"caption\":\""), '\"', IDpos);
             else find(str, text, textPos, F("\"text\":\""), '\"', IDpos);
+            
+            if (reply) {
+                replyText = text;
+                find(str, text, textPos, F("\"text\":\""), '\"', IDpos);
+            }
             
             String data;
             find(str, data, textPos, F("\"data\":\""), '\"', IDpos);
@@ -910,6 +918,7 @@ private:
                 (bool)_file_ptr,
                 (uint32_t)date.toInt(),
                 fileName,
+                replyText,
                 
                 // legacy
                 userID,

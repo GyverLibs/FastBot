@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.16-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.17-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 
@@ -344,6 +344,7 @@ bot.sendMessage("Hello!", "112233"); // уйдёт в "112233"
     - `String chatID` - ID чата
     - `int32_t messageID` - ID сообщения в чате
     - `String text` - текст сообщения или попдпись к файлу
+    - `String replyText` - текст ответа, если он есть
     - `String data` - callback данные из меню (если есть)
     - `bool query` - запрос
     - `bool edited` - сообщение отредактировано
@@ -351,7 +352,8 @@ bot.sendMessage("Hello!", "112233"); // уйдёт в "112233"
     - `bool OTA` - запрос на OTA обновление (получен .bin файл)
     - `uint32_t unix` - время сообщения
     - `String fileName` - имя файла
-    - `String toString()` - вся информация из сообщения, удобно для отладки (с версии 2.11)
+
+А также `String toString()` - вся информация из сообщения, удобно для отладки (с версии 2.11)
 
 **Примечания:**
 - Телеграм разделяет текст на несколько сообщений, если длина текста превышает ~4000 символов! Эти сообщения будут иметь разный messageID в чате.
@@ -670,12 +672,12 @@ void loop() {
 - v2.14: Улучшен парсинг строки с ID, добавил отключение OTA, добавил парсинг названия группы/канала в username
 - v2.15: Заплатка для кривой библиотеки ESP32
 - v2.16: добавлен вывод fileName, пофикшены неотправляемые сообщения в Markdown режиме
+- v2.17: вывод текста сообщения, на которое ответил юзер + корректная работа с menu в группах
 
 <a id="feedback"></a>
 ## Баги и обратная связь
 При нахождении багов создавайте **Issue**, а лучше сразу пишите на почту [alex@alexgyver.ru](mailto:alex@alexgyver.ru)  
 Библиотека открыта для доработки и ваших **Pull Request**'ов!
-
 
 При сообщении о багах или некорректной работе библиотеки нужно обязательно указывать:
 - Версия библиотеки

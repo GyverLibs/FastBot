@@ -64,6 +64,7 @@ userID	KEYWORD2
 username	KEYWORD2
 chatID	KEYWORD2
 text	KEYWORD2
+replyText	KEYWORD2
 data	KEYWORD2
 query	KEYWORD2
 edited	KEYWORD2
