@@ -244,18 +244,19 @@ void incrementID(uint8_t val);      // вручную инкрементиров
 
 // ============== СООБЩЕНИЕ ===============
 // структура FB_msg
-String& userID;         // ID юзера
-String& username;       // ник (в API это first_name)
-String& chatID;         // ID чата
-int32_t messageID;      // ID сообщения
-String& text;           // текст
-String& data;           // callback дата
-bool query;             // запрос
-bool& edited;           // сообщение отредактировано
-bool isBot;             // сообщение от бота
-bool OTA;               // запрос на OTA обновление
-uint32_t unix;          // время сообщения
-String toString();      // вся информация одной строкой
+String& userID;     // ID юзера
+String& username;   // ник (в API это first_name)
+String& chatID;     // ID чата
+int32_t messageID;  // ID сообщения
+String& text;       // текст
+String& data;       // callback дата
+bool query;         // запрос
+bool& edited;       // сообщение отредактировано
+bool isBot;         // сообщение от бота
+bool OTA;           // запрос на OTA обновление
+uint32_t unix;      // время сообщения
+String& fileName;   // имя файла
+String& replyText;  // текст ответа, если он есть
 
 
 // ================ ВРЕМЯ =================
