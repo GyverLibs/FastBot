@@ -22,7 +22,7 @@
 - Возможность OTA обновления прошивки .bin файлом из чата Telegram
 
 ### Дополнительно
-Используйте библиотеку [CharDisplay](https://github.com/GyverLibs/CharDisplay) для вывода графиков и рисования в чате!
+Используйте библиотеку [CharDisplay](https://github.com/GyverLibs/CharDisplay) для вывода графиков и рисования в чате!  
 ![](https://github.com/GyverLibs/CharDisplay/blob/main/docs/plots.png)
 
 ### Совместимость
