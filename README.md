@@ -23,6 +23,7 @@
 
 ### Дополнительно
 Используйте библиотеку [CharDisplay](https://github.com/GyverLibs/CharDisplay) для вывода графиков и рисования в чате!
+![](https://github.com/GyverLibs/CharDisplay/blob/main/docs/plots.png)
 
 ### Совместимость
 ESP8266 (SDK v2.6+), ESP32
