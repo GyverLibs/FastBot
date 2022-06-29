@@ -10,6 +10,7 @@ FastBot	KEYWORD1
 FB_NO_UNICODE	KEYWORD1
 FB_NO_URLENCODE	KEYWORD1
 FB_NO_OTA	KEYWORD1
+FB_DYNAMIC	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)

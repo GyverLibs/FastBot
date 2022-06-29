@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.17.1-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.18-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 [![Foo](https://img.shields.io/badge/README-ENGLISH-blueviolet.svg?style=flat-square)](https://github-com.translate.goog/GyverLibs/FastBot?_x_tr_sl=ru&_x_tr_tl=en)  
@@ -46,6 +46,10 @@ ESP8266 (SDK v2.6+), ESP32
 
 - FastBot легче почти на 7 кБ Flash и 2 кБ SRAM, но занимает на 1 кБ в SRAM больше во время работы программы. Итого легче на 2-1 = 1 кБ SRAM.
 - FastBot значительно быстрее обрабатывает чат и отправляет сообщения (на 2 секунды) за счёт ручного парсинга ответа сервера и статически выделенных HTTP клиентов
+- Тест проведён в обычном режиме работы FastBot. При активации `FB_DYNAMIC` библиотека будет занимать на 10кб меньше памяти, но работать будет медленнее:
+  - Free heap: 48000 кБ
+  - Отправка сообщения: 1 секунда
+  - Запрос обновления: 1 секунда
 
 ## Содержание
 - [Установка](#install)
@@ -301,6 +305,7 @@ String FB_64str(int64_t id);        // перевод из int64_t в String
 #define FB_NO_UNICODE       // отключить конвертацию Unicode для входящих сообщений (чуть ускорит программу)
 #define FB_NO_URLENCODE     // отключить конвертацию urlencode для исходящих сообщений (чуть ускорит программу)
 #define FB_NO_OTA           // отключить поддержку OTA обновлений из чата
+#define FB_DYNAMIC          // включить динамический режим: библиотека дольше выполняет запрос, но занимает на 10 кб меньше памяти в SRAM
 ```
 
 <a id="usage"></a>
@@ -676,6 +681,7 @@ void loop() {
 - v2.16: добавлен вывод fileName, пофикшены неотправляемые сообщения в Markdown режиме
 - v2.17: вывод текста сообщения, на которое ответил юзер + корректная работа с menu в группах
 - v2.17.1: мелкий фикс https://github.com/GyverLibs/FastBot/issues/12
+- v2.18: добавлен режим FB_DYNAMIC: библиотека дольше выполняет запрос, но занимает на 10 кб меньше памяти в SRAM
 
 <a id="feedback"></a>
 ## Баги и обратная связь

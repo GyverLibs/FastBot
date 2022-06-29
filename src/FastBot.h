@@ -84,6 +84,7 @@
     v2.16: добавлен вывод fileName, пофикшены неотправляемые сообщения в Markdown режиме
     v2.17: вывод текста сообщения, на которое ответил юзер + корректная работа с menu в группах
     v2.17.1: мелкий фикс https://github.com/GyverLibs/FastBot/issues/12
+    v2.18: добавлен режим FB_DYNAMIC: библиотека дольше выполняет запрос, но занимает на 10 кб меньше памяти в SRAM
 */
 
 /*
@@ -121,7 +122,6 @@
 #endif
 #include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
-BearSSL::WiFiClientSecure _FB_client;
 #else   // ESP32
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -143,8 +143,8 @@ public:
         _limit = limit;
         _ovf = ovf;
         _prd = period;
+        #if !defined(FB_DYNAMIC) && defined(ESP8266)
         setBufferSizes(512, 512);
-        #ifdef ESP8266
         _FB_client.setInsecure();
         #endif
     }
@@ -156,7 +156,7 @@ public:
     // ===================== НАСТРОЙКИ =====================
     // установить размеры буфера на приём и отправку
     void setBufferSizes(uint16_t rx, uint16_t tx) {
-        #ifdef ESP8266
+        #if !defined(FB_DYNAMIC) && defined(ESP8266)
         _FB_client.setBufferSizes(rx, tx);
         #endif
     }
@@ -218,6 +218,10 @@ public:
         //req += F("&allowed_updates=[\"update_id\",\"message\",\"edited_message\",\"channel_post\",\"edited_channel_post\",\"callback_query\"]");
         
         #ifdef ESP8266
+        #ifdef FB_DYNAMIC
+        BearSSL::WiFiClientSecure _FB_client;
+        _FB_client.setInsecure();
+        #endif
         if (!_http->begin(_FB_client, req)) return 4;  // ошибка подключения
         #else
         if (!_http->begin(req)) return 4;   // ошибка подключения
@@ -667,6 +671,10 @@ public:
     
     uint8_t sendRequest(String& req) {
         #ifdef ESP8266
+        #ifdef FB_DYNAMIC
+        BearSSL::WiFiClientSecure _FB_client;
+        _FB_client.setInsecure();
+        #endif
         if (!_http->begin(_FB_client, req)) return 4;  // ошибка подключения
         #else
         if (!_http->begin(req)) return 4;
@@ -954,6 +962,10 @@ private:
             url += buf;
             #ifdef ESP8266
             ESPhttpUpdate.rebootOnUpdate(false);
+            #ifdef FB_DYNAMIC
+            BearSSL::WiFiClientSecure _FB_client;
+            _FB_client.setInsecure();
+            #endif
             OTAstate = ESPhttpUpdate.update(_FB_client, url);
             #else
             WiFiClientSecure client;
@@ -966,6 +978,10 @@ private:
     }
     
     HTTPClient *_http = nullptr;
+    #if !defined(FB_DYNAMIC) && defined(ESP8266)
+    BearSSL::WiFiClientSecure _FB_client;
+    #endif
+    
     void (*_callback)(FB_msg& msg) = nullptr;
     String _token;
     String _otaID;
