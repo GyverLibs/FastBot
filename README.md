@@ -21,13 +21,13 @@
 - Встроенные часы реального времени с синхронизацией от сервера Telegram
 - Возможность OTA обновления прошивки .bin файлом из чата Telegram
 
+### Совместимость
+ESP8266 (SDK v2.6+), ESP32
+
 ### Дополнительно
 Используйте библиотеку [CharDisplay](https://github.com/GyverLibs/CharDisplay) для вывода графиков и рисования в чате!  
 
 ![](https://github.com/GyverLibs/CharDisplay/blob/main/docs/plots.png)
-
-### Совместимость
-ESP8266 (SDK v2.6+), ESP32
 
 ## Документация и проекты
 Подробные уроки по работе с Телеграм ботом при помощи этой библиотеки можно найти на [сайте Arduino набора GyverKIT](https://kit.alexgyver.ru/tutorials-category/telegram/)
