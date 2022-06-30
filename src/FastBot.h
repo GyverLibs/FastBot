@@ -85,6 +85,7 @@
     v2.17: вывод текста сообщения, на которое ответил юзер + корректная работа с menu в группах
     v2.17.1: мелкий фикс https://github.com/GyverLibs/FastBot/issues/12
     v2.18: добавлен режим FB_DYNAMIC: библиотека дольше выполняет запрос, но занимает на 10 кб меньше памяти в SRAM
+	v2.19: поддержка OTA со сжатием gzip
 */
 
 /*
@@ -879,7 +880,7 @@ private:
             if (_file_ptr) _file_ptr = nullptr;
             if (find(str, file, textPos, F("\"file_name\":\""), '\"', IDpos)) {
                 fileName = file;
-                if (file.endsWith(F(".bin"))) {
+                if (file.endsWith(F(".bin")) || file.endsWith(F(".bin.gz"))) {
                     find(str, file, textPos, F("\"file_id\":\""), '\"', IDpos);
                     _file_ptr = &file;
                     _otaID = chatID;

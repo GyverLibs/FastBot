@@ -1,4 +1,4 @@
-[![Foo](https://img.shields.io/badge/Version-2.18-brightgreen.svg?style=flat-square)](#versions)
+[![Foo](https://img.shields.io/badge/Version-2.19-brightgreen.svg?style=flat-square)](#versions)
 [![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
 [![Foo](https://img.shields.io/badge/%E2%82%BD$%E2%82%AC%20%D0%9D%D0%B0%20%D0%BF%D0%B8%D0%B2%D0%BE-%D1%81%20%D1%80%D1%8B%D0%B1%D0%BA%D0%BE%D0%B9-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
 [![Foo](https://img.shields.io/badge/README-ENGLISH-blueviolet.svg?style=flat-square)](https://github-com.translate.goog/GyverLibs/FastBot?_x_tr_sl=ru&_x_tr_tl=en)  
@@ -559,8 +559,10 @@ FB_Time t(bot.getUnix(), 3);
 С версии библиотеки 2.13 появилось обновление прошивки "по воздуху" (OTA) через чат. Для обновления нужно:
 - Скомпилировать программу в файл: *Arduino IDE/Скетч/Экспорт бинарного файла* (файл **.bin** появится в папке со скетчем)
 - Отправить файл в чат с ботом, можно добавить подпись
+	- Файл может быть переслан из другого чата
 - Файл будет обработан как обычное входящее сообщение от пользователя
     - Подпись к файлу можно получить из поля `text`
+	- Название файла можно получить из поля `fileName`
     - Будет поднят флаг `OTA`
 - Для запуска процесса обновления нужно вызвать `update` внутри обработчика сообщений
 - В тот же чат чат будет отправлен статус обновления (*OK* или *error*)
@@ -576,6 +578,13 @@ if (msg.OTA && msg.text == "update") bot.update();
 // обновить, если прислал известный человек (админ)
 if (msg.OTA && msg.chatID == "123456") bot.update();
 ```
+
+### Сжатие бинарника
+Если прошивка весит много - её можно сжать в gzip:
+- Рекомендуемый уровень сжатия - 9
+- Имя файла должно оканчиваться на *.bin.gz*
+- Файл точно так же отправляется в чат с ботом или пересылается ему
+- В прошивке перед подключением всех библиотек нужно объявить `#define ATOMIC_FS_UPDATE`
 
 <a id="textmode"></a>
 ## Оформление текста
@@ -684,6 +693,7 @@ void loop() {
 - v2.17: вывод текста сообщения, на которое ответил юзер + корректная работа с menu в группах
 - v2.17.1: мелкий фикс https://github.com/GyverLibs/FastBot/issues/12
 - v2.18: добавлен режим FB_DYNAMIC: библиотека дольше выполняет запрос, но занимает на 10 кб меньше памяти в SRAM
+- v2.19: поддержка OTA со сжатием gzip
 
 <a id="feedback"></a>
 ## Баги и обратная связь
