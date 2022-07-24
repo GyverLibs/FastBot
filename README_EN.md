@@ -1,34 +1,39 @@
 This is an automatic translation, may be incorrect in some places. See sources and examples!
 
 # FastBot
-Very simple and fast library for telegram bot on esp8266/esp32
-- Works on standard libraries without SSL
+Multifunctional fast library for telegram bot on esp8266/esp32
+- Works on standard libraries
 - Optional "whitelist" chat IDs
 - Check for updates manually or by timer
 - Send/delete/edit/reply messages
-- Works (reading and sending) in chats, groups, channels
+- Read and send in chats, groups, channels
 - Change the name and description of the chat
 - Pin/unpin messages
-- Send stickers, send with markdown/html formatting
-- Displaying a regular and inline menu with support for link buttons
+- Send stickers
+- Messages with markdown/html formatting
+- Show normal menu
+- Display inline menu with support for link buttons
 - Unicode support (other languages ​​+ emoji) for incoming messages
 - Built-in urlencode for outgoing messages
 - Built-in real time clock with synchronization from the Telegram server
-- Possibility of OTA firmware update with .bin file from Telegram chat
-
-### Optional
-Use the [CharDisplay] library(https://github.com/GyverLibs/CharDisplay) to display graphs and draw in chat!
+- Possibility of OTA firmware update with .bin file from Telegram chat (firmware and SPIFFS)
+- Sending files from memory to chat (+ editing)
 
 ### Compatibility
 ESP8266 (SDK v2.6+), ESP32
 
+### Optional
+Use the [CharDisplay] library(https://github.com/GyverLibs/CharDisplay) to display graphs and draw in chat!
+
+![](https://github.com/GyverLibs/CharDisplay/blob/main/docs/plots.png)
+
 ## Documentation and projects
-Detailed tutorials on working with the Telegram bot using this library can be found on the [GyverKIT Arduino site] (https://kit.alexgyver.ru/tutorials-category/telegram/)
+Detailed tutorials on working with the Telegram bot using this library can be found on the [GyverKIT Arduino website] (https://kit.alexgyver.ru/tutorials-category/telegram/)
 
 ## Comparison with Universal-Arduino-Telegram-Bot
 [Universal-Arduino-Telegram-Bot](https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot)
 
-For comparison, a minimal example was used with sending a message to the chat and outputting incoming messages to the series:
+For comparison, we used a minimal example with sending a message to the chat and outputting incoming messages to the series:
 - **send** - send a message to the chat
 - **update** - check incoming messages
 - **free heap** - amount of free RAM while the program is running
@@ -39,9 +44,9 @@ For comparison, a minimal example was used with sending a message to the chat an
 | fastbot | 393220 | 28036 | 70 | 70 | 37552 |
 | diff | 6784 | 1812 | 1930 | 1830 | 1040 |
 
-- FastBot is almost 7kB lighter than Flash and 2kB SRAM, but takes up 1kB more SRAM while the program is running. Total lighter by 2-1 = 1 kB of SRAM.
+- FastBot is lighter by almost 7 kB of Flash and 2 kB of SRAM, but takes up 1 kB of SRAM more while the program is running. Total lighter by 2-1 = 1 kB of SRAM.
 - FastBot processes chat and sends messages much faster (by 2 seconds) due to manual parsing of the server response and statically allocated HTTP clients
-- The test was carried out in the normal mode of operation of FastBot. When `FB_DYNAMIC` is activated, the library will take 10kb less memory, but it will work slower:
+- The test was carried out in the normal mode of operation of FastBot. When `FB_DYNAMIC` is activated, the library will take up 10kb less memory, but it will work slower:
   - Free heap: 48000 kB
   - Sending a message: 1 second
   - Update request: 1 second
@@ -65,14 +70,16 @@ For comparison, a minimal example was used with sending a message to the chat an
     - [Time module](#unix)
     - [Time to receive message](#time)
     - [Real Time Clock](#rtc)
-    - [Firmware update from chat](#ota)
+    - [Firmware update from chat](#ota)Cranberry
     - [Text styling](#textmode)
+    - [Sending files](#files)
+    - [Download files](#download)
     - [All sorts of tricks](#tricks)
 - [Versions](#versions)
 - [Bugs and feedback](#feedback)
 
 <a id="install"></a>
-## Installedcranberry vka
+## Installation
 - The library can be found by the name **FastBot** and installed through the library manager in:
     - Arduino IDE
     - Arduino IDE v2
@@ -137,7 +144,7 @@ uint8_t editMessage(int32_t msgid, String text, String id);
 uint8_t replyMessage(String msg, int32_t replyID);
 uint8_t replyMessage(String msg, int32_t replyID, String id);
 
-// send the sticker to the chat/chats specified in setChatID OR pass the chat id
+// send the sticker to the chat/chats specified in setChatID OR pass the id of the chatcranberry ta
 uint8_t sendSticker(String stickerID);
 uint8_t sendSticker(String stickerID, String id);
 
@@ -223,6 +230,35 @@ uint8_t unpinMessage(int32_t msgid, String& id);
 uint8_t unpinAll();
 uint8_t unpinAll(String& id);
 
+// ================ FILES ================
+// download file from chat
+bool downloadFile(File &f, const String& url);
+    
+// send a file from the buf bytebuffer of length length, type type and file name name to the chat specified in setChatID OR pass the chat id
+uint8_t sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name);
+uint8_t sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, const String& id);
+
+// send file File, type type and file name name in chat specified in setChatID OR pass chat id
+uint8_t sendFile(File &file, FB_FileType type, const String& name);
+uint8_t sendFile(File &file, FB_FileType type, const String& name, const String& id);
+
+// edit the file from the buf bytebuffer with length length, type type and file name name in the message msgid in the chat specified in setChatID OR pass the chat id
+// except for the FB_VOICE type!
+uint8_t editFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, int32_t msgid);
+uint8_t editFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, int32_t msgid, const String& id);
+
+// edit file File, of type type and file name name in msgid specified in message in setChatID chat OR pass chat id
+// except for the FB_VOICE type!
+uint8_t editFile(File &file, FB_FileType type, const String& name, int32_t msgid);
+uint8_t editFile(File &file, FB_FileType type, const String& name, int32_t msgid, const String& id);
+
+// where FB_FileType - file type
+FB_PHOTO - picture
+FB_AUDIO - audio
+FB_DOC - document
+FB_VIDEO - video
+FB_GIF - animation
+FB_VOICE - voice message
 
 // ============= API COMMAND ==============
 // send an API command in the chat specified in setChatID OR pass the chat id (the id will be added to the command itself)
@@ -236,7 +272,7 @@ int32_t lastBotMsg(); // ID of the last message sent by the bot
 int32_t lastUsrMsg(); // ID of the last message sent by the user
 String chatIDs; // the string specified in setChatID, for debugging and editing the list
 
-uint8_t sendRequest(String&req); // send request(https://api.telegram.org/bot...)
+uint8_t sendRequest(String&req); // send request (https://api.telegram.org/bot...)
 void autoIncrement(boolean incr); // auto increment messages (enabled by default)
 void incrementID(uint8_tval); // manually increment ID by val
 
@@ -244,18 +280,24 @@ void incrementID(uint8_tval); // manually increment ID by val
 // ============== MESSAGE ===============
 // FB_msg structure
 String&userID; // user ID
-String&username; // nickname (in API this is first_name)
+String&username; // user's nickname (in API this is first_name)
+bool isBot; // user - bot
+
 String&chatID; // chat ID
 int32_t messageID; // message ID
-String&text; // text
-String&data; // callback date
-bool query; // request
 bool& edited; // message edited
-bool isBot; // message from bot
-bool OTA; // request for OTA update
-uint32_t unix; // message time
-String&fileName; // File name
+
+String&text; // Message text
 String&replyText; // response text, if any
+bool query; // request
+String&data; // callback date
+
+bool isFile; // this is a file
+String&fileName; // File name
+String&fileUrl; // download file address
+bool OTA; // file - request for OTA update
+
+uint32_t unix; // message time
 
 
 // ================ TIME =================
@@ -275,6 +317,10 @@ StringtimeString(); // time string in HH:MM:SS format
 String dateString(); // date string in DD.MM.YYYY format
 
 
+// ================ UPDATE =================
+uint8_t update(); // OTA firmware update, call inside the message handler on the OTA flag
+uint8_t updateFS(); // OTA update SPIFFS, call inside the message handler on the OTA flag
+
 // =============== STATUS ================
 // Many functions return status:
 // 0 - waiting
@@ -285,6 +331,7 @@ String dateString(); // date string in DD.MM.YYYY format
 // 5 - chat ID not set
 // 6 - multiple send, status unknown
 // 7 - handler not connected
+// 8 - file error
 
 
 // =============== UTILITIES ===============
@@ -326,70 +373,72 @@ bot.sendMessage("Hello!", "112233"); // will go to "112233"
 > Note: Telegram splits the text into several messages if the text length exceeds ~4000 characters! These messages will have a different messageID in the chat.
 
 ### Limits
-Telegram sets the following limits on **sending** messages by the bot ([documentation](https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this ))
+Telegram sets the following limits on **sending** messages by a bot ([documentation](https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this ))
 - To chat: no more than once per second. *You can send more often, but the message may not reach*
 - To a group: no more than 20 messages per minute
-- Total limit: no more than 30 messages per secondКлюква ду
+- Total limit: no more than 30 messages per second
 
-Также бот может читать сообщения, с момента отправки которых прошло меньше 24 часов.
+The bot can also read messages that are less than 24 hours old.
 
 <a id="inbox"></a>
-## Парсинг сообщений
-Сообщения автоматически запрашиваются и читаются в `tick()`, при поступлении нового сообщения вызывается указанная функция-обработчик:
-- Создаём в скетче свою функцию вида `void функция(FB_msg& сообщение)`
-- Вызываем `attach(функция)`
-- Эта функция будет автоматически вызвана при входящем сообщении, если ID чата совпадает или не настроен
-- Если обработчик не подключен - сообщения не будут проверяться
-- Внутри этой функции можно пользоваться переданной переменной `сообщение`, которая имеет тип `FB_msg` (структура) и содержит в себе:
-    - `String userID` - ID пользователя
-    - `String username` - имя пользователя или канала
-    - `String chatID` - ID чата
-    - `int32_t messageID` - ID сообщения в чате
-    - `String text` - текст сообщения или попдпись к файлу
-    - `String replyText` - текст ответа, если он есть
-    - `String data` - callback данные из меню (если есть)
-    - `bool query` - запрос
-    - `bool edited` - сообщение отредактировано
-    - `bool isBot` - сообщение от бота
-    - `bool OTA` - запрос на OTA обновление (получен .bin файл)
-    - `uint32_t unix` - время сообщения
-    - `String fileName` - имя файла
+## Message parsing
+Messages are automatically requested and read in `tick()`, when a new message arrives, the specified handler function is called:
+- Create our own function in the sketch like `void function(FB_msg& message)`
+- Call `attach(function)`
+- This function will be automatically called on an incoming message if the chat ID matches or is not configured
+- If the handler is not connected - messages will not be checked
+- Inside this function, you can use the passed variable `message`, which has the type `FB_msg` (structure) and contains:
+    - `String userID` - user ID
+    - `String username` - user or channel name
+    - `bool isBot` - message from bot
+    - `String chatID` - chat ID
+    - `int32_t messageID` - message ID in the chat
+    - `bool edited` - message has been edited
+    - `String text` - message text or file caption
+    - `String replyText` - reply text, if any
+    - `String data` - callback data from the menu (if any)
+    - `bool query` - query
+    - `bool isFile` is a file
+    - `String fileName` - file name
+    - `String fileUrl` - file address to download
+    - `bool OTA` - request for OTA update (received .bin file)
+    - `uint32_t unix` - message time
 
-А также `String toString()` - вся информация из сообщения, удобно для отладки (с версии 2.11)
+And also `String toString()` - all information from the message in one line, convenient for debugging (since 2.11)
 
-**Примечания:**
-- Телеграм разделяет текст на несколько сообщений, если длина текста превышает ~4000 символов! Эти сообщения будут иметь разный messageID в чате.
-- При ответе на сообщение библиотека парсит текст исходного сообщения, а не ответа
+**Notes:**
+- Telegram splits the text into several messages if the text length exceeds ~4000 characters! These messages will have a different messageID in the chat.
+- When replying to a message, the library parses the text of the original message, not the answer
 
-### Белый список
-В библиотеке реализован механизм белого списка: можно указать в `setChatID()` ID чата (или нескольких через запятую), сообщения из которого будут приниматься. 
-Сообщения из остальных чатов будут игнорироваться.
+### White list
+The library implements a white list mechanism: you can specify in `setChatID()` ID of the chat (or several, separated by commas), messages from which will be accepted.
+Messages from other chats will be ignored.
 
 <a id="tick"></a>
-## Тикер
-Для опроса входящих сообщений нужно подключить обработчик сообщений и вызывать `tick()` в главном цикле программы `loop()`, опрос происходит по встроенному таймеру. 
-По умолчанию период опроса установлен 3600 миллисекунд.
+## Ticker
+To poll incoming messages, you need to connect a message handler and call `tick()` in the main loop of the program `loop()`, polling occurs according to the built-in timer.
+By default, the polling period is set to 3600 milliseconds.
 
-Можно опрашивать чаще (сменить период через `setPeriod()`), но лично у меня с ~2021 года сервер Телеграм стал отвечать не 
-раньше, чем через ~3 секунды. Если запрашивать обновления чаще этого периода, программа зависает внутри `tick()` (внутри GET запроса) 
-в ожидании ответа сервера на остаток от 3 секунд. При периоде ~3600 мс этого не происходит, поэтому я сделал его по умолчанию. 
-Возможно это зависит от провайдера или страны.
+You can poll more often (change the period via `setPeriod()`), but personally, since ~ 2021, the Telegram server has not responded
+sooner than ~3 seconds later. If you request updates more often than this period, the program hangs inside a `tick()` (inside a GET request)
+waiting for the server response for the remainder of 3 seconds. With a period of ~3600 ms this does not happen, so I made it the default.
+Maybe it depends on the provider or the country.
 
 <a id="example"></a>
-## Минимальный пример
+## Minimal example
 ```cpp
 void setup() {
-  // подключаемся к WiFi
-  bot.attach(newMsg);   // подключаем обработчик сообщений
+  // connect to WiFi
+  bot.attach(newMsg); // connect the message handler
 }
 
 void newMsg(FB_msg& msg) {
-  // выводим имя юзера и текст сообщения
+  // display the username and message text
   //Serial.print(msg.username);
   //Serial.print(", ");
   //Serial.println(msg.text);
   
-  // выводим всю информацию о сообщении
+  // output all information about the message
   Serial.println(msg.toString());
 }
 
@@ -399,29 +448,29 @@ void loop() {
 ```
 
 <a id="msgid"></a>
-## Обращение к сообщениям
-Для редактирования и удаления сообщений и меню, а также закрепления сообщений, нужно знать ID сообщения (его номер в чате):
-- ID входящего сообщения приходит в обработчик входящих сообщений
-- ID последнего принятого сообщения можно получить из `lastUsrMsg()`
-- ID последнего отправленного ботом сообщения можно получить из `lastBotMsg()`
+## Accessing messages
+To edit and delete messages and menus, as well as pin messages, you need to know the message ID (its number in the chat):
+- ID of the incoming message is sent to the incoming message handler
+- Last received message ID can be obtained from `lastUsrMsg()`
+- The ID of the last message sent by the bot can be obtained from `lastBotMsg()`
 
-Будьте внимательны с ID чата, у всех чатов своя нумерация сообщений!
+Be careful with the chat ID, all chats have their own message numbering!
 
 <a id="sticker"></a>
-## Отправка стикеров
-Для отправки стикера нужно знать ID стикера. Отправь нужный стикер боту *@idstickerbot*, он пришлёт ID стикера. 
-Этот ID нужно передать в функцию `sendSticker()`.
+## Send stickers
+To send a sticker, you need to know the sticker ID. Send the desired sticker to the *@idstickerbot* bot, it will send the sticker ID.
+This ID must be passed to the `sendSticker()` function.
 
 <a id="menu"></a>
-## Меню
-> Примечание: для всех вариантов меню *не производится* url encode. Избегайте символов `#` и `&` или используйте уже закодированный url!
+## Menu
+> Note: for all menu options *not produced* url encode. Avoid the `#` and `&` characters, or use an already encoded url!
 
-Для отправки меню используется строка с именами кнопок и специальным форматированием:
-- `\t` - горизонтальное разделение кнопок
-- `\n` - вертикальное разделение кнопок
-- Лишние пробелы вырезаются автоматически
+To send the menu, a string with button names and special formatting is used:
+- `\t` - horizontal separation of buttons
+- `\n` - vertical separation of buttons
+- Extra spaces are cut automatically
 
-Пример меню 3x1: `"Menu1 \t Menu2 \t Menu3 \n Menu4"`
+3x1 menu example: `"Menu1 \t Menu2 \t Menu3 \n Menu4"`
 
 Result:
 ```cpp
@@ -469,7 +518,7 @@ You can respond to the callback with:
 - `answer(text, FB_NOTIF)` - popup notification text
 - `answer(text, FB_ALERT)` - warning window and OK button
 
-You need to answer **inside the message handler**! Example:
+You need to answer ** inside the handlerCranberries and messages**! Example:
 ```cpp
 void newMsg(FB_msg& msg) {
   if (msg.query) bot.answer("Hello!", true);
@@ -522,7 +571,7 @@ In the incoming message handler, the `FB_msg` structure has a `unix` field that 
 To translate into a more readable format, we act according to the scheme described above:
 ```cpp
 void newMsg(FB_msg& msg) {
-  FB_Time t(msg.unix, 3); // passed unix and timezone
+  FB_Time t(msg.unix, 3); // passed unix and time zone
   Serial.print(t.timeString());
   Serial print(' ');
   Serial.println(t.dateString());
@@ -537,7 +586,7 @@ message after the board is turned on, so that the library synchronizes the clock
 and to be specified, because the time calculated by means of esp will go away (~ 2 seconds per day). Tools:
 
 - `uint32_t getUnix()` - returns the current time in unix format or `0` if the time is out of sync.
-- `booltimeSynced()` - will return `true` if clocks are synchronized.
+- `bool timeSynced()` - will return `true` if the clock is synchronized.
 - `FB_Time getTime(gmt)` - you need to pass your time zone, it will return `FB_Time`.
 
 Thus, there are two ways to get the time (see the timeTest example):
@@ -551,14 +600,19 @@ FB_Time t(bot.getUnix(), 3);
 ## Firmware update from chat
 Since version 2.13 of the library, a firmware update has appeared "over the air" (OTA) via chat. To update you need:
 - Compile the program into a file: *Arduino IDE/Sketch/Export Binary File* (the **.bin** file will appear in the sketch folder)
-- Send a file to a chat with a bot, you can add a signature
-- The file will be processed as a normal incoming message from the user
-    - File signature can be obtained from the `text` field
-    - `OTA` flag will be raised
-- To start the update process, you need to call `update` inside the message handler
+- Send file to chat with bot
+    - You can add a signature to the file
+- File can be forwarded from another chat
+- The file will be processed as a normal incoming message from user `msg`
+    - File signature can be obtained from the `msg.text` field
+- The file name can be obtained from the `msg.fileName` field
+    - The `msg.OTA` flag will be raised *(if the file has a .bin extension)*
+- To start the firmware update process, you need to call `update()` inside the message handler
+    - In version 2.20 it was possible to update SPIFFS - you need to call `updateFS()`
 - In the same chat the update status will be sent (*OK* or *error*)
 - After a successful update, the esp will reboot
 
+### Firmware update script examples
 ```cpp
 // update if just sent a bin file
 if (msg.OTA) bot.update();
@@ -566,9 +620,25 @@ if (msg.OTA) bot.update();
 // update if the file has the desired signature
 if (msg.OTA && msg.text == "update") bot.update();
 
+// update if the file has the correct name
+if (msg.OTA && msg.fileName == "update.bin") bot.update();
+
 // update if sent by a famous person (admin)
 if (msg.OTA && msg.chatID == "123456") bot.update();
 ```
+
+### Atmeasures SPIFFS update scripts
+```cpp
+// update SPIFFS if a file arrived with the word spiffs in its name
+if (msg.OTA && msg.fileName.indexOf("spiffs") > 0) bot.updateFS();
+```
+
+### Binary compression
+If the firmware weighs a lot, it can be compressed into gzip:
+- Recommended compression level - 9
+- The file name must end with *.bin.gz*
+- The file is sent to the chat with the bot in the same way or sent to him
+- In the firmware, before connecting all libraries, you need to declare `#define ATOMIC_FS_UPDATE`
 
 <a id="textmode"></a>
 ## Text decoration
@@ -585,8 +655,82 @@ bot.sendMessage(F("*Bold*, ~Strike~, `code`, [alexgyver.ru](https://alexgyver.ru
 
 Output to chat: **Bold**, ~~Strike~~, `code`, [alexgyver.ru](https://alexgyver.ru/)
 
-> **Attention!** In FB_MARKDOWN mode, you cannot use `! + #`, the message will not be sent. It may be possible to fix it in the future (the problem of urlencode and escaping reserved characters).
+> **Attention!** In FB_MARKDOWN mode, you cannot use `! + #`, the message will not be sent. It may be possible to fix it in the future (the problem of urlencode and escaping of reserved characters).
 
+<a id="files"></a>
+## Sending files (v2.20+)
+You can send files of the following types (the type is specified when sending), in telegrams these are different types of messages:
+- `FB_PHOTO` - picture (jpg, png...)
+- `FB_AUDIO` - audio (mp3, wav...)
+- `FB_DOC` - document (txt, pdf...)
+- `FB_VIDEO` - video (avi, mp4...)
+- `FB_GIF` - animation (gif)
+- `FB_VOICE` - voice message (ogg)
+
+> You can edit all the above types of messages except **FB_VOICE**!
+
+> When sending, you must specify the name of the file with the same extension as it was created or stored in memory.
+
+The library supports two options for sending files: from the buffer (RAM) and from SPIFFS.
+
+### File from buffer
+To send, you need to pass the buffer, its size, file type, its size and the chat ID (without specifying the chat ID, the chat from setChatID will be used).
+To edit, you must also specify the message ID:
+```cpp
+uint8_t sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, const String& id);
+uint8_t editFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, int32_t msgid, const String& id);
+```
+
+Let's send the text as a text file, so you can maintain and upload logs:
+```cpp
+  charbuf[] = "Hello, World!";
+  bot.sendFile((byte*)buf, strlen(buf), FB_DOC, "test.txt", CHAT_ID);
+```
+
+Let's send a photo from the camera (see example *sendCamPhoto*):
+```cpp
+  frame = esp_camera_fb_get();
+  bot.sendFile((byte*)frame->buf, frame->len, FB_PHOTO, "photo.jpg", CHAT_ID);
+```
+
+### Memory file
+Instead of a buffer and its size, the send function takes a file, the rest is the same as when sending from a buffer:
+```cpp
+uint8_t sendFile(File &file, FB_FileType type, const String& name, const String& id);
+uint8_t editFile(File &file, FB_FileType type, const String& name, int32_t msgid, const String& id);
+```
+
+To work with files in this way, you need to include a library that defines the `File` class, such as SPIFFS.h or LittleFS.h.
+> You need to connect the library BEFORE (higher in the code) connecting FastBot! Otherwise, functions with File will not be available.
+
+Let's send a picture from memory:
+```cpp
+  File file = LittleFS.open("/test.png", "r");
+  bot.sendFile(file, FB_PHOTO, "test.png", CHAT_ID);
+  file.close();
+```
+
+<a id="download"></a>
+## Download files (v2.20+)
+Since version 2.20, the incoming message object contains a link to a file if the message contains a file. This allows you to download the file to the internal memory.
+
+To download files using FastBot, you need to include a library that defines the `File` class, such as SPIFFS.h or LittleFS.h.
+> You need to connect the library BEFORE (higher in the code) connecting FastBot! Otherwise, functions with File will not be available.
+
+To download a fileneeds to open/create a file with writable permissions and pass it to `downloadFile()` along with a link to the file.
+```cpp
+void newMsg(FB_msg& msg) {
+  if (msg.isFile) { // this is a file
+    Serial.print("Downloading");
+    Serial.println(msg.fileName);
+
+    String path = '/' + msg.fileName; // path like /filename.xxx
+    File f = LittleFS.open(path, "w"); // open for writing
+    bool status = bot.downloadFile(f, msg.fileUrl); // load
+    Serial.println(status ? "OK" : "Error"); // status
+  }
+}
+```
 
 <a id="tricks"></a>
 ## Tricks
@@ -644,7 +788,7 @@ void loop() {
 - v2.1:
     - More optimization
     - Added text formatting (markdown, html)
-    -Added a reply to a post
+    - Added a reply to the message
 
 - v2.2:
     - Big memory and performance optimizations
@@ -673,10 +817,18 @@ void loop() {
 - v2.13: Memory optimization. Added OTA update
 - v2.14: Improved ID string parsing, added OTA disable, added group/channel name parsing to username
 - v2.15: ESP32 library curve patch
-- v2.16: added fileName output, fixed unsent messages in Markdown mode
+- v2.16: addedoutput fileName, fixed unsent messages in Markdown mode
 - v2.17: displaying the text of the message to which the user replied + correct work with menu in groups
 - v2.17.1: minor fix https://github.com/GyverLibs/FastBot/issues/12
-- v2.18: added FB_DYNAMIC mode: the library takes longer to execute a request, but takes up 10 kb less memory in SRAM
+- v2.18: added FB_DYNAMIC mode: the library takes longer to execute the request, but takes up 10 kb less memory in SRAM
+- v2.19: OTA support with gzip compression
+- v2.20:
+    - added OTA update SPIFFS + example
+    - added the output of the url of the file for downloading from the chat + example
+    - added the ability to download a file from the chat
+    - added the ability to send files (from SPIFFS or buffer) + example
+    - added the ability to edit files (from SPIFFS or buffer)
+    - added an example of sending photos from the ESP32-CAM camera
 
 <a id="feedback"></a>
 ## Bugs and feedback
@@ -687,7 +839,7 @@ When reporting bugs or incorrect work of the library, it is necessary to indicat
 - Library version
 - What MK is used
 - SDK version (for ESP)
-- Arduino IDE version
+- Arduino IDE Version
 - Whether built-in examples work correctly, which use functions and constructs that lead to a bug in your code
 - What code was loaded, what work was expected from it and how it works in reality
 - Ideally, attach the minimum code in which the bug is observed. Not a canvas of a thousand lines, but a minimal code
