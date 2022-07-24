@@ -85,7 +85,14 @@
     v2.17: вывод текста сообщения, на которое ответил юзер + корректная работа с menu в группах
     v2.17.1: мелкий фикс https://github.com/GyverLibs/FastBot/issues/12
     v2.18: добавлен режим FB_DYNAMIC: библиотека дольше выполняет запрос, но занимает на 10 кб меньше памяти в SRAM
-	v2.19: поддержка OTA со сжатием gzip
+    v2.19: поддержка OTA со сжатием gzip
+    v2.20:
+        - добавил OTA обновление SPIFFS + пример
+        - добавил вывод url файла для скачивания из чата + пример
+        - добавил возможность скачать файл из чата
+        - добавил возможность отправки файлов (из SPIFFS или буфера) + пример
+        - добавил возможность редактирования файлов (из SPIFFS или буфера)
+        - добавил пример отправки фото с камеры ESP32-CAM
 */
 
 /*
@@ -98,10 +105,20 @@
     5 - не задан chat ID
     6 - множественная отправка, статус неизвестен
     7 - не подключен обработчик
+    8 - ошибка файла
 */
 
 #ifndef _FastBot_h
 #define _FastBot_h
+
+#define FB_BLOCK_SIZE 1024
+
+// ============================================
+#ifdef ESP8266
+#define FB_SECURE_CLIENT BearSSL::WiFiClientSecure
+#else
+#define FB_SECURE_CLIENT WiFiClientSecure
+#endif
 
 #define FB_TEXT 0
 #define FB_MARKDOWN 1
@@ -109,6 +126,9 @@
 
 #define FB_NOTIF 0
 #define FB_ALERT 1
+
+#define FB_FIRMWARE 1
+#define FB_SPIFFS 2
 
 #include <Arduino.h>
 #include <StreamString.h>
@@ -146,7 +166,7 @@ public:
         _prd = period;
         #if !defined(FB_DYNAMIC) && defined(ESP8266)
         setBufferSizes(512, 512);
-        _FB_client.setInsecure();
+        client.setInsecure();
         #endif
     }
     
@@ -158,7 +178,7 @@ public:
     // установить размеры буфера на приём и отправку
     void setBufferSizes(uint16_t rx, uint16_t tx) {
         #if !defined(FB_DYNAMIC) && defined(ESP8266)
-        _FB_client.setBufferSizes(rx, tx);
+        client.setBufferSizes(rx, tx);
         #endif
     }
     
@@ -220,10 +240,10 @@ public:
         
         #ifdef ESP8266
         #ifdef FB_DYNAMIC
-        BearSSL::WiFiClientSecure _FB_client;
-        _FB_client.setInsecure();
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
         #endif
-        if (!_http->begin(_FB_client, req)) return 4;  // ошибка подключения
+        if (!_http->begin(client, req)) return 4;  // ошибка подключения
         #else
         if (!_http->begin(req)) return 4;   // ошибка подключения
         #endif
@@ -241,8 +261,8 @@ public:
         // была попытка OTA обновления. Обновляемся после ответа серверу!
         if (OTAstate >= 0) {
             String ota;
-            if (OTAstate == 0) ota = F("error");
-            else if (OTAstate == 1) ota = F("no updates");
+            if (OTAstate == 0) ota = F("Error");
+            else if (OTAstate == 1) ota = F("No updates");
             else if (OTAstate == 2) ota = F("OK");
             sendMessage(ota, _otaID);
             if (OTAstate == 2) ESP.restart();
@@ -673,10 +693,10 @@ public:
     uint8_t sendRequest(String& req) {
         #ifdef ESP8266
         #ifdef FB_DYNAMIC
-        BearSSL::WiFiClientSecure _FB_client;
-        _FB_client.setInsecure();
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
         #endif
-        if (!_http->begin(_FB_client, req)) return 4;  // ошибка подключения
+        if (!_http->begin(client, req)) return 4;  // ошибка подключения
         #else
         if (!_http->begin(req)) return 4;
         #endif
@@ -687,7 +707,7 @@ public:
             _http = new HTTPClient;
             // постучимся ещё раз
             #ifdef ESP8266
-            if (!_http->begin(_FB_client, req)) return 4;  // ошибка подключения
+            if (!_http->begin(client, req)) return 4;  // ошибка подключения
             #else
             if (!_http->begin(req)) return 4;
             #endif
@@ -739,18 +759,285 @@ public:
         return _unix;
     }
     
-    uint8_t update() {
-        if (!_file_ptr) return 5;
-        sendMessage(F("OTA update..."), _otaID);
-        String req;
-        _addToken(req);
-        req += F("/getFile?file_id=");
-        req += *_file_ptr;
-        _file_ptr = nullptr;
-        return sendRequest(req);
+    // ===================== OTA =====================
+    // ОТА обновление, вызывать внутри обработчика сообщения по флагу OTA
+    uint8_t update(uint8_t type = FB_FIRMWARE) {
+        if (!_file_ptr) return 8;
+        OTAflag = type;
+        sendMessage((type == FB_FIRMWARE) ? F("OTA firmware...") : F("OTA spiffs..."), _otaID);
+        
+        #ifdef ESP8266
+        ESPhttpUpdate.rebootOnUpdate(false);
+        #ifdef FB_DYNAMIC
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
+        #endif
+        if (OTAflag == FB_FIRMWARE) OTAstate = ESPhttpUpdate.update(client, *_file_ptr);
+        else if (OTAflag == FB_SPIFFS) OTAstate = ESPhttpUpdate.updateFS(client, *_file_ptr);
+        #else
+        WiFiClientSecure client;
+        client.setInsecure();
+        httpUpdate.rebootOnUpdate(false);
+        if (OTAflag == FB_FIRMWARE) OTAstate = httpUpdate.update(client, *_file_ptr);
+        else if (OTAflag == FB_SPIFFS) OTAstate = httpUpdate.updateSpiffs(client, *_file_ptr);
+        #endif
+        return 1;
+    }
+    
+    // ОТА обновление SPIFFS, вызывать внутри обработчика сообщения по флагу OTA
+    uint8_t updateFS() {
+        return update(FB_SPIFFS);
+    }
+    
+    // ===================== FILE =====================
+    uint8_t sendFile(uint8_t* buf, uint16_t length, FB_FileType type, const String& name, const String& id) {
+        return _sendFile(buf, length, type, name, id);
+    }
+    uint8_t sendFile(uint8_t* buf, uint16_t length, FB_FileType type, const String& name) {
+        return sendFile(buf, length, type, name, chatIDs);
+    }
+    
+#ifdef FS_H
+    uint8_t sendFile(File &file, FB_FileType type, const String& name, const String& id) {
+        return _sendFile(file, type, name, id);
+    }
+    uint8_t sendFile(File &file, FB_FileType type, const String& name) {
+        return sendFile(file, type, name, chatIDs);
+    }
+#endif
+    
+    uint8_t editFile(uint8_t* buf, uint16_t length, FB_FileType type, const String& name, int32_t msgid, const String& id) {
+        return _editFile(buf, length, type, name, msgid, id);
+    }
+    uint8_t editFile(uint8_t* buf, uint16_t length, FB_FileType type, const String& name, int32_t msgid) {
+        return editFile(buf, length, type, name, msgid, chatIDs);
     }
 
+#ifdef FS_H
+    uint8_t editFile(File &file, FB_FileType type, const String& name, int32_t msgid, const String& id) {
+        return _editFile(file, type, name, msgid, id);
+    }
+    uint8_t editFile(File &file, FB_FileType type, const String& name, int32_t msgid) {
+        return editFile(file, type, name, msgid, chatIDs);
+    }
+#endif
+    
+    // ============================ DOWNLOAD ============================
+#ifdef FS_H
+    // скачать файл
+    bool downloadFile(File &f, const String& url) {
+        if (!f) return 0;
+#ifdef ESP8266
+#ifdef FB_DYNAMIC
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
+#endif
+        if (!_http->begin(client, url)) return 0;
+#else
+        if (!_http->begin(url)) return 0;
+#endif
+        bool stat = 0;
+        if (_http->GET() == HTTP_CODE_OK) {
+            if (_http->writeToStream(&f)) stat = 1;
+        }
+        _http->end();
+        f.close();
+        return stat;
+    }
+#endif
+
 private:
+#define FB_END_REQ "\r\n" "--FAST_BOT--"
+    // ============================ MULTIPART SEND ============================
+    bool _multipartSend(FB_SECURE_CLIENT& client, uint32_t length, FB_FileType type, const String& name, const String& id) {
+        if (!client.connect("api.telegram.org", 443)) return 0;
+        String startReq;
+        startReq += F("--FAST_BOT" "\r\n");
+        startReq += F("content-disposition: form-data; name=\"");
+        switch (type) {
+        case FB_PHOTO: startReq += F("photo"); break;
+        case FB_AUDIO: startReq += F("audio"); break;
+        case FB_DOC: startReq += F("document"); break;
+        case FB_VIDEO: startReq += F("video"); break;
+        case FB_GIF: startReq += F("animation"); break;
+        case FB_VOICE: startReq += F("voice"); break;
+        }
+        startReq += F("\"; filename=\"");
+        startReq += name;
+        startReq += F("\"\r\n\r\n");
+        client.print(F("POST /bot"));
+        client.print(_token);
+        switch (type) {
+        case FB_PHOTO: client.print(F("/sendPhoto")); break;
+        case FB_AUDIO: client.print(F("/sendAudio")); break;
+        case FB_DOC: client.print(F("/sendDocument")); break;
+        case FB_VIDEO: client.print(F("/sendVideo")); break;
+        case FB_GIF: client.print(F("/sendAnimation")); break;
+        case FB_VOICE: client.print(F("/sendVoice")); break;
+        }
+        client.print(F("?chat_id="));
+        client.print(id);
+        client.println(F(" HTTP/1.1"));
+        client.println(F("Host: api.telegram.org"));
+        client.println(F("User-Agent: esp"));
+        client.println(F("Accept: */*"));
+        client.print(F("Content-Length: "));
+        String endReq = F(FB_END_REQ);
+        client.println(String(length + startReq.length() + endReq.length()));
+        client.print(F("Content-Type: multipart/form-data; boundary=" "FAST_BOT" "\r\n\r\n"));
+        client.print(startReq);
+        return 1;
+    }
+    
+    // ============================ MULTIPART EDIT ============================
+    bool _multipartEdit(FB_SECURE_CLIENT& client, uint32_t length, FB_FileType type, const String& name, uint32_t msgid, const String& id) {
+        if (!client.connect("api.telegram.org", 443)) return 0;
+        String startReq;
+        uint16_t rndName = random(0xFFFF);
+        startReq += F("--FAST_BOT" "\r\n");
+        startReq += F("content-disposition: form-data; name=\"");
+        startReq += rndName;
+        startReq += F("\"; filename=\"");
+        startReq += name;
+        startReq += F("\"\r\n\r\n");
+        client.print(F("POST /bot"));
+        client.print(_token);
+        client.print(F("/editMessageMedia?chat_id="));
+        client.print(id);
+        client.print(F("&message_id="));
+        client.print(msgid);
+        client.print("&media={\"type\":\"");
+        switch (type) {
+        case FB_PHOTO: client.print(F("photo")); break;
+        case FB_AUDIO: client.print(F("audio")); break;
+        case FB_DOC: client.print(F("document")); break;
+        case FB_VIDEO: client.print(F("video")); break;
+        case FB_GIF: client.print(F("animation")); break;
+        case FB_VOICE: break;
+        }
+        client.print(F("\", \"media\":\"attach://"));
+        client.print(rndName);
+        client.print(F("\"}"));
+        client.println(F(" HTTP/1.1"));
+        client.println(F("Host: api.telegram.org"));
+        client.println(F("User-Agent: esp"));
+        client.println(F("Accept: */*"));
+        client.print(F("Content-Length: "));
+        String endReq = F(FB_END_REQ);
+        client.println(String(length + startReq.length() + endReq.length()));
+        client.print(F("Content-Type: multipart/form-data; boundary=" "FAST_BOT" "\r\n\r\n"));
+        client.print(startReq);
+        return 1;
+    }
+
+    // ============================ MULTIPART END ============================
+    uint8_t _multipartEnd(FB_SECURE_CLIENT& client) {
+        client.print(F(FB_END_REQ));     // endReq
+        char prev = '\0';
+        while (client.connected()) {
+            char cur = client.read();
+            if (cur == '\r' && prev == '\n') break;
+            prev = cur;
+        }
+        String resp = client.readString();
+        client.stop();
+        return (parseRequest(resp) ? 1 : 3);  // 1 - ok, 3 - telegram err
+    }
+    
+    // ============================ SEND ============================
+    uint8_t _sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, const String& id) {
+#ifdef ESP8266
+#ifdef FB_DYNAMIC
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
+#endif
+#else
+        WiFiClientSecure client;
+        client.setInsecure();
+#endif
+        if (!_multipartSend(client, length, type, name, id)) return 4;
+        uint32_t sz = length;
+        uint32_t st = 0;
+        while (sz) {
+            uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
+            client.write(buf + st, len);
+            st += len;
+            sz -= len;
+        }
+        return _multipartEnd(client);
+    }
+    
+#ifdef FS_H
+    uint8_t _sendFile(File &file, FB_FileType type, const String& name, const String& id) {
+#ifdef ESP8266
+#ifdef FB_DYNAMIC
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
+#endif
+#else
+        WiFiClientSecure client;
+        client.setInsecure();
+#endif
+        if (!_multipartSend(client, file.size(), type, name, id)) return 4;
+        uint8_t buf[FB_BLOCK_SIZE];
+        uint32_t sz = file.size();
+        while (sz) {
+            uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
+            file.read(buf, len);
+            client.write(buf, len);
+            sz -= len;
+        }
+        return _multipartEnd(client);
+    }
+#endif
+
+    // ============================ EDIT ============================
+    uint8_t _editFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, int32_t msgid, const String& id) {
+#ifdef ESP8266
+#ifdef FB_DYNAMIC
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
+#endif
+#else
+        WiFiClientSecure client;
+        client.setInsecure();
+#endif
+        if (!_multipartEdit(client, length, type, name, msgid, id)) return 4;
+        uint32_t sz = length;
+        uint32_t st = 0;
+        while (sz) {
+            uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
+            client.write(buf + st, len);
+            st += len;
+            sz -= len;
+        }
+        return _multipartEnd(client);
+    }
+
+#ifdef FS_H
+    uint8_t _editFile(File& file, FB_FileType type, const String& name, int32_t msgid, const String& id) {
+#ifdef ESP8266
+#ifdef FB_DYNAMIC
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
+#endif
+#else
+        WiFiClientSecure client;
+        client.setInsecure();
+#endif
+        if (!_multipartEdit(client, file.size(), type, name, msgid, id)) return 4;
+        uint8_t buf[FB_BLOCK_SIZE];
+        uint32_t sz = file.size();
+        while (sz) {
+            uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
+            file.read(buf, len);
+            client.write(buf, len);
+            sz -= len;
+        }
+        return _multipartEnd(client);
+    }
+#endif
+
     // ================ BUILDER ===============
     void _addToken(String& s) {
         s.reserve(150);
@@ -874,26 +1161,31 @@ private:
             find(str, date, textPos, F("\"date\":"), ',', IDpos);
             bool reply = find(str, F("\"reply_to_message\""), textPos, IDpos);
             
+            bool isOTA = false;
             String fileName;
-            #ifndef FB_NO_OTA
-            String file;
-            if (_file_ptr) _file_ptr = nullptr;
-            if (find(str, file, textPos, F("\"file_name\":\""), '\"', IDpos)) {
-                fileName = file;
-                if (file.endsWith(F(".bin")) || file.endsWith(F(".bin.gz"))) {
-                    find(str, file, textPos, F("\"file_id\":\""), '\"', IDpos);
-                    _file_ptr = &file;
+            String fileUrl;
+            if (find(str, fileName, textPos, F("\"file_name\":\""), '\"', IDpos)) {
+                _file_ptr = &fileUrl;
+                if (fileName.endsWith(F(".bin")) || fileName.endsWith(F(".bin.gz"))) {
+                    isOTA = 1;
                     _otaID = chatID;
                 }
+                fileUrl.reserve(120);
+                String fileID;
+                find(str, fileID, textPos, F("\"file_id\":\""), '\"', IDpos);
+                String req;
+                _addToken(req);
+                req += F("/getFile?file_id=");
+                req += fileID;
+                sendRequest(req);
             }
-            #endif
             
             // удаление сервисных сообщений
             if (clrSrv) {
                 if (find(str, F("\"new_chat_title\""), textPos, IDpos) ||
-                    find(str, F("\"pinned_message\""), textPos, IDpos)) {
-                        deleteMessage(_lastUsrMsg, chatID);
-                        continue;
+                        find(str, F("\"pinned_message\""), textPos, IDpos)) {
+                    deleteMessage(_lastUsrMsg, chatID);
+                    continue;
                 }
             }
             
@@ -925,10 +1217,12 @@ private:
                 (bool)_query_ptr,
                 edited,
                 is_bot[0] == 't',
-                (bool)_file_ptr,
+                isOTA,
                 (uint32_t)date.toInt(),
                 fileName,
                 replyText,
+                (bool)_file_ptr,
+                fileUrl,
                 
                 // legacy
                 userID,
@@ -938,6 +1232,7 @@ private:
             };
             _callback(msg);
             if (_query_ptr) answer();   // отвечаем на коллбэк, если юзер не ответил
+            _file_ptr = nullptr;
             if (OTAstate >= 0) break;   // обновление! выходим
             yield();
         }
@@ -945,42 +1240,30 @@ private:
         return 1;
     }
     
-    void parseRequest(const String& answ) {
+    bool parseRequest(const String& answ) {
         int16_t st = 0;
         String buf;
+        bool OK = 0;
         if (find(answ, buf, st, F("\"message_id\":"), ',', answ.length())) {
             _lastBotMsg = buf.toInt();
+            OK = 1;
         }
         if (find(answ, buf, st, F("\"date\":"), ',', answ.length())) {
             _unix = buf.toInt();
             _lastUpd = millis();
         }
-        #ifndef FB_NO_OTA
-        if (find(answ, buf, st, F("\"file_path\":\""), '\"', answ.length())) {
-            String url(F("https://api.telegram.org/file/bot"));
-            url += _token;
-            url += '/';
-            url += buf;
-            #ifdef ESP8266
-            ESPhttpUpdate.rebootOnUpdate(false);
-            #ifdef FB_DYNAMIC
-            BearSSL::WiFiClientSecure _FB_client;
-            _FB_client.setInsecure();
-            #endif
-            OTAstate = ESPhttpUpdate.update(_FB_client, url);
-            #else
-            WiFiClientSecure client;
-            client.setInsecure();
-            httpUpdate.rebootOnUpdate(false);
-            OTAstate = httpUpdate.update(client, url);
-            #endif
+        if (_file_ptr && find(answ, buf, st, F("\"file_path\":\""), '\"', answ.length())) {
+            *_file_ptr = F("https://api.telegram.org/file/bot");
+            *_file_ptr += _token;
+            *_file_ptr += '/';
+            *_file_ptr += buf;
         }
-        #endif
+        return OK;
     }
     
     HTTPClient *_http = nullptr;
     #if !defined(FB_DYNAMIC) && defined(ESP8266)
-    BearSSL::WiFiClientSecure _FB_client;
+    BearSSL::WiFiClientSecure client;
     #endif
     
     void (*_callback)(FB_msg& msg) = nullptr;
@@ -998,6 +1281,7 @@ private:
     bool clrSrv = false;
     bool ovfFlag = 0;
     int8_t OTAstate = -1;
+    uint8_t OTAflag = 0;
     
     uint32_t _unix = 0;
     uint32_t _lastUpd = 0;

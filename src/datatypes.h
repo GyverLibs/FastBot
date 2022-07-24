@@ -1,6 +1,15 @@
 #pragma once
 #include <Arduino.h>
 
+enum FB_FileType {
+    FB_PHOTO,
+    FB_AUDIO,
+    FB_DOC,
+    FB_VIDEO,
+    FB_GIF,
+    FB_VOICE,
+};
+
 struct FB_msg {
     String& userID;     // ID юзера
     String& username;   // ник (в API это first_name)
@@ -15,6 +24,8 @@ struct FB_msg {
     uint32_t unix;      // время сообщения
     String& fileName;   // имя файла
     String& replyText;  // текст ответа, если он есть
+    bool isFile;        // это файл
+    String& fileUrl;    // адрес файла для загрузки
     
     // legacy
     String& usrID;      // ID юзера
@@ -30,33 +41,43 @@ struct FB_msg {
         s += userID;
         s += F(", username: ");
         s += username;
+        s += F(", isBot: ");
+        s += isBot;
         s += '\n';
         
         s += F("chatID: ");
         s += chatID;
         s += F(", messageID: ");
         s += messageID;
+        s += F(", edited: ");
+        s += edited;
         s += '\n';
         
         s += F("text: ");
         s += text;
-        s += F(", data: ");
-        s += data;
         s += F(", replyText: ");
         s += replyText;
         s += '\n';
         
         s += F("query: ");
         s += query;
-        s += F(", edited: ");
-        s += edited;
-        s += F(", isBot: ");
-        s += isBot;
-        s += F(", OTA: ");
-        s += OTA;
+        s += F(", data: ");
+        s += data;
+        s += '\n';
+        
+        s += F("isFile: ");
+        s += isFile;
         s += F(", fileName: ");
         s += fileName;
-        s += F(", unix: ");
+        s += F(", OTA: ");
+        s += OTA;
+        s += '\n';
+        
+        s += F("fileUrl: ");
+        s += fileUrl;
+        s += '\n';
+        
+        s += F("unix: ");
         s += unix;
         s += '\n';
         return s;
