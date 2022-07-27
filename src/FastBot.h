@@ -93,6 +93,7 @@
         - добавил возможность отправки файлов (из SPIFFS или буфера) + пример
         - добавил возможность редактирования файлов (из SPIFFS или буфера)
         - добавил пример отправки фото с камеры ESP32-CAM
+    v2.21: ускорил отправку файлов ботом в чат
 */
 
 /*
@@ -939,7 +940,9 @@ private:
             if (cur == '\r' && prev == '\n') break;
             prev = cur;
         }
-        String resp = client.readString();
+        String resp;
+        resp.reserve(client.available());
+        while (client.available()) resp += (char)client.read();
         client.stop();
         return (parseRequest(resp) ? 1 : 3);  // 1 - ok, 3 - telegram err
     }
