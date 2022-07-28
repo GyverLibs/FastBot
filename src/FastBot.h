@@ -94,6 +94,7 @@
         - добавил возможность редактирования файлов (из SPIFFS или буфера)
         - добавил пример отправки фото с камеры ESP32-CAM
     v2.21: ускорил отправку файлов ботом в чат
+    v2.22: мелкая оптимизация, исправил ошибку компиляции при дефайне FB_NO_OTA
 */
 
 /*
@@ -115,12 +116,6 @@
 #define FB_BLOCK_SIZE 1024
 
 // ============================================
-#ifdef ESP8266
-#define FB_SECURE_CLIENT BearSSL::WiFiClientSecure
-#else
-#define FB_SECURE_CLIENT WiFiClientSecure
-#endif
-
 #define FB_TEXT 0
 #define FB_MARKDOWN 1
 #define FB_HTML 2
@@ -762,11 +757,12 @@ public:
     
     // ===================== OTA =====================
     // ОТА обновление, вызывать внутри обработчика сообщения по флагу OTA
-    uint8_t update(uint8_t type = FB_FIRMWARE) {
+    uint8_t update(__attribute__((unused)) uint8_t type = FB_FIRMWARE) {
+    #ifndef FB_NO_OTA
         if (!_file_ptr) return 8;
         OTAflag = type;
         sendMessage((type == FB_FIRMWARE) ? F("OTA firmware...") : F("OTA spiffs..."), _otaID);
-        
+
         #ifdef ESP8266
         ESPhttpUpdate.rebootOnUpdate(false);
         #ifdef FB_DYNAMIC
@@ -782,6 +778,7 @@ public:
         if (OTAflag == FB_FIRMWARE) OTAstate = httpUpdate.update(client, *_file_ptr);
         else if (OTAflag == FB_SPIFFS) OTAstate = httpUpdate.updateSpiffs(client, *_file_ptr);
         #endif
+    #endif
         return 1;
     }
     
@@ -847,8 +844,18 @@ public:
     }
 #endif
 
+// ============================ PRIVATE ============================
 private:
+// конечная строка запроса
 #define FB_END_REQ "\r\n" "--FAST_BOT--"
+
+// тип клиента в зависимости от платформы
+#ifdef ESP8266
+#define FB_SECURE_CLIENT BearSSL::WiFiClientSecure
+#else
+#define FB_SECURE_CLIENT WiFiClientSecure
+#endif
+
     // ============================ MULTIPART SEND ============================
     bool _multipartSend(FB_SECURE_CLIENT& client, uint32_t length, FB_FileType type, const String& name, const String& id) {
         if (!client.connect("api.telegram.org", 443)) return 0;
@@ -947,96 +954,81 @@ private:
         return (parseRequest(resp) ? 1 : 3);  // 1 - ok, 3 - telegram err
     }
     
-    // ============================ SEND ============================
-    uint8_t _sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, const String& id) {
-#ifdef ESP8266
-#ifdef FB_DYNAMIC
-        BearSSL::WiFiClientSecure client;
-        client.setInsecure();
-#endif
-#else
-        WiFiClientSecure client;
-        client.setInsecure();
-#endif
-        if (!_multipartSend(client, length, type, name, id)) return 4;
+    // ============================ ROUTINE BUF ============================
+    void _sendBufRoutine(FB_SECURE_CLIENT& client, uint8_t* buf, uint32_t length) {
         uint32_t sz = length;
-        uint32_t st = 0;
+        uint8_t* bufs = buf;
         while (sz) {
             uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
-            client.write(buf + st, len);
-            st += len;
+            client.write(bufs, len);
+            bufs += len;
             sz -= len;
         }
+    }
+    
+    // ============================ ROUTINE FILE ============================
+#ifdef FS_H
+    void _sendFileRoutine(FB_SECURE_CLIENT& client, File &file) {
+        uint8_t buf[FB_BLOCK_SIZE];
+        uint32_t sz = file.size();
+        while (sz) {
+            uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
+            file.read(buf, len);
+            client.write(buf, len);
+            sz -= len;
+        }
+    }
+#endif
+
+// ============================ CLIENT MACRO ============================
+// макрос создания клиента в зависимости от платформы и настроек
+#ifdef ESP8266
+#ifdef FB_DYNAMIC
+#define FB_DECLARE_CLIENT() \
+    BearSSL::WiFiClientSecure client; \
+    client.setInsecure();
+#else
+#define FB_DECLARE_CLIENT()
+#endif
+#else
+#define FB_DECLARE_CLIENT() \
+    WiFiClientSecure client; \
+    client.setInsecure();
+#endif
+    
+    // ============================ SEND BUF ============================
+    uint8_t _sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, const String& id) {
+        FB_DECLARE_CLIENT();
+        if (!_multipartSend(client, length, type, name, id)) return 4;
+        _sendBufRoutine(client, buf, length);
         return _multipartEnd(client);
     }
     
+    // ============================ SEND FILE ============================
 #ifdef FS_H
     uint8_t _sendFile(File &file, FB_FileType type, const String& name, const String& id) {
-#ifdef ESP8266
-#ifdef FB_DYNAMIC
-        BearSSL::WiFiClientSecure client;
-        client.setInsecure();
-#endif
-#else
-        WiFiClientSecure client;
-        client.setInsecure();
-#endif
+        FB_DECLARE_CLIENT();
         if (!_multipartSend(client, file.size(), type, name, id)) return 4;
-        uint8_t buf[FB_BLOCK_SIZE];
-        uint32_t sz = file.size();
-        while (sz) {
-            uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
-            file.read(buf, len);
-            client.write(buf, len);
-            sz -= len;
-        }
+        _sendFileRoutine(client, file);
         return _multipartEnd(client);
     }
 #endif
 
-    // ============================ EDIT ============================
+    // ============================ EDIT BUF ============================
     uint8_t _editFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, int32_t msgid, const String& id) {
-#ifdef ESP8266
-#ifdef FB_DYNAMIC
-        BearSSL::WiFiClientSecure client;
-        client.setInsecure();
-#endif
-#else
-        WiFiClientSecure client;
-        client.setInsecure();
-#endif
+        FB_DECLARE_CLIENT();
         if (!_multipartEdit(client, length, type, name, msgid, id)) return 4;
-        uint32_t sz = length;
-        uint32_t st = 0;
-        while (sz) {
-            uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
-            client.write(buf + st, len);
-            st += len;
-            sz -= len;
-        }
+        _sendBufRoutine(client, buf, length);
         return _multipartEnd(client);
     }
+    
 
+    // ============================ EDIT FILE ============================
 #ifdef FS_H
     uint8_t _editFile(File& file, FB_FileType type, const String& name, int32_t msgid, const String& id) {
-#ifdef ESP8266
-#ifdef FB_DYNAMIC
-        BearSSL::WiFiClientSecure client;
-        client.setInsecure();
-#endif
-#else
-        WiFiClientSecure client;
-        client.setInsecure();
-#endif
+        FB_DECLARE_CLIENT();
         if (!_multipartEdit(client, file.size(), type, name, msgid, id)) return 4;
-        uint8_t buf[FB_BLOCK_SIZE];
-        uint32_t sz = file.size();
-        while (sz) {
-            uint32_t len = min((uint32_t)FB_BLOCK_SIZE, sz);
-            file.read(buf, len);
-            client.write(buf, len);
-            sz -= len;
-        }
+        _sendFileRoutine(client, file);
         return _multipartEnd(client);
     }
 #endif
