@@ -95,6 +95,7 @@
         - добавил пример отправки фото с камеры ESP32-CAM
     v2.21: ускорил отправку файлов ботом в чат
     v2.22: мелкая оптимизация, исправил ошибку компиляции при дефайне FB_NO_OTA
+    v2.23: пофиксил источник реального времени на editMessage
 */
 
 /*
@@ -758,7 +759,7 @@ public:
     // ===================== OTA =====================
     // ОТА обновление, вызывать внутри обработчика сообщения по флагу OTA
     uint8_t update(__attribute__((unused)) uint8_t type = FB_FIRMWARE) {
-    #ifndef FB_NO_OTA
+        #ifndef FB_NO_OTA
         if (!_file_ptr) return 8;
         OTAflag = type;
         sendMessage((type == FB_FIRMWARE) ? F("OTA firmware...") : F("OTA spiffs..."), _otaID);
@@ -778,7 +779,7 @@ public:
         if (OTAflag == FB_FIRMWARE) OTAstate = httpUpdate.update(client, *_file_ptr);
         else if (OTAflag == FB_SPIFFS) OTAstate = httpUpdate.updateSpiffs(client, *_file_ptr);
         #endif
-    #endif
+        #endif
         return 1;
     }
     
@@ -844,12 +845,12 @@ public:
     }
 #endif
 
-// ============================ PRIVATE ============================
+    // ============================ PRIVATE ============================
 private:
-// конечная строка запроса
+    // конечная строка запроса
 #define FB_END_REQ "\r\n" "--FAST_BOT--"
 
-// тип клиента в зависимости от платформы
+    // тип клиента в зависимости от платформы
 #ifdef ESP8266
 #define FB_SECURE_CLIENT BearSSL::WiFiClientSecure
 #else
@@ -980,20 +981,20 @@ private:
     }
 #endif
 
-// ============================ CLIENT MACRO ============================
-// макрос создания клиента в зависимости от платформы и настроек
+    // ============================ CLIENT MACRO ============================
+    // макрос создания клиента в зависимости от платформы и настроек
 #ifdef ESP8266
 #ifdef FB_DYNAMIC
 #define FB_DECLARE_CLIENT() \
-    BearSSL::WiFiClientSecure client; \
-    client.setInsecure();
+        BearSSL::WiFiClientSecure client; \
+        client.setInsecure();
 #else
 #define FB_DECLARE_CLIENT()
 #endif
 #else
 #define FB_DECLARE_CLIENT() \
-    WiFiClientSecure client; \
-    client.setInsecure();
+        WiFiClientSecure client; \
+        client.setInsecure();
 #endif
     
     // ============================ SEND BUF ============================
@@ -1243,7 +1244,8 @@ private:
             _lastBotMsg = buf.toInt();
             OK = 1;
         }
-        if (find(answ, buf, st, F("\"date\":"), ',', answ.length())) {
+        if (find(answ, buf, st, F("\"edit_date\":"), ',', answ.length()) ||
+                find(answ, buf, st, F("\"date\":"), ',', answ.length())) {
             _unix = buf.toInt();
             _lastUpd = millis();
         }
