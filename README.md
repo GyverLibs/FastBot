@@ -357,6 +357,8 @@ String FB_64str(int64_t id);        // перевод из int64_t в String
 
 <a id="usage"></a>
 ## Использование
+- [Инструкция как создать и настроить Telegram бота](https://kit.alexgyver.ru/tutorials/telegram-basic/)
+- Если бот у вас уже есть, убедитесь что он **не в webhook режиме**, иначе esp не сможет принимать сообщения!
 
 <a id="send"></a>
 ## Отправка сообщений
