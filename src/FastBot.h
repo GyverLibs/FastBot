@@ -96,6 +96,7 @@
     v2.21: ускорил отправку файлов ботом в чат
     v2.22: мелкая оптимизация, исправил ошибку компиляции при дефайне FB_NO_OTA
     v2.23: пофиксил источник реального времени на editMessage
+    v2.24: добавлен вариант attach(), который иожет передать обработчику второй произвольный параметр, например, ссылку на экземпляр класса, из которого создан бот.
 */
 
 /*
@@ -205,11 +206,22 @@ public:
     // подключение обработчика сообщений
     void attach(void (*handler)(FB_msg& msg)) {
         _callback = handler;
+        _callbackWithPayload = nullptr;
+        _callbackPayload = nullptr;
+    }
+
+    // подключение обработчика сообщений с передачей полезной нагрузки обработчику
+    void attach(void (*handler)(FB_msg& msg, void* payload), void* payload) {
+        _callbackWithPayload = handler;
+        _callbackPayload = payload;
+        _callback = nullptr;
     }
     
     // отключение обработчика сообщений
     void detach() {
         _callback = nullptr;
+        _callbackWithPayload = nullptr;
+        _callbackPayload = nullptr;
     }
     
     // режим обработки текста: FB_TEXT, FB_MARKDOWN, FB_HTML
@@ -225,7 +237,7 @@ public:
     // ===================== ТИКЕР =====================
     // ручная проверка обновлений
     uint8_t tickManual() {
-        if (!*_callback) return 7;
+        if (!*_callback && !*_callbackWithPayload) return 7;
         String req;
         req.reserve(120);
         _addToken(req);
@@ -284,7 +296,7 @@ public:
     
     // проверка обновлений по таймеру
     uint8_t tick() {
-        if (!*_callback) return 7;
+        if (!*_callback && !*_callbackWithPayload) return 7;
         if (millis() - tmr >= _prd) {
             uint8_t stat = tickManual();
             tmr = millis();
@@ -1226,7 +1238,8 @@ private:
                 first_name,
                 _lastUsrMsg,
             };
-            _callback(msg);
+            if (*_callback) _callback(msg); else _callbackWithPayload(msg, _callbackPayload);
+
             if (_query_ptr) answer();   // отвечаем на коллбэк, если юзер не ответил
             _file_ptr = nullptr;
             if (OTAstate >= 0) break;   // обновление! выходим
@@ -1264,6 +1277,8 @@ private:
     #endif
     
     void (*_callback)(FB_msg& msg) = nullptr;
+    void (*_callbackWithPayload)(FB_msg& msg, void* payload) = nullptr;
+    void* _callbackPayload = nullptr;
     String _token;
     String _otaID;
     String* _file_ptr = nullptr;
