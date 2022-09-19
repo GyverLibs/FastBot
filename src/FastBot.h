@@ -789,10 +789,10 @@ public:
     }
     
     // ===================== FILE =====================
-    uint8_t sendFile(uint8_t* buf, uint16_t length, FB_FileType type, const String& name, const String& id) {
+    uint8_t sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, const String& id) {
         return _sendFile(buf, length, type, name, id);
     }
-    uint8_t sendFile(uint8_t* buf, uint16_t length, FB_FileType type, const String& name) {
+    uint8_t sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name) {
         return sendFile(buf, length, type, name, chatIDs);
     }
     
@@ -805,10 +805,10 @@ public:
     }
 #endif
     
-    uint8_t editFile(uint8_t* buf, uint16_t length, FB_FileType type, const String& name, int32_t msgid, const String& id) {
+    uint8_t editFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, int32_t msgid, const String& id) {
         return _editFile(buf, length, type, name, msgid, id);
     }
-    uint8_t editFile(uint8_t* buf, uint16_t length, FB_FileType type, const String& name, int32_t msgid) {
+    uint8_t editFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, int32_t msgid) {
         return editFile(buf, length, type, name, msgid, chatIDs);
     }
 
