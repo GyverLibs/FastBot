@@ -97,6 +97,7 @@
     v2.22: мелкая оптимизация, исправил ошибку компиляции при дефайне FB_NO_OTA
     v2.23: пофиксил источник реального времени на editMessage
     v2.24: фикс отправки больших файлов https://github.com/GyverLibs/FastBot/pull/17
+    v2.25: добавил skipUpdates - пропуск непрочитанных сообщений
 */
 
 /*
@@ -199,8 +200,14 @@ public:
         else chatIDs = "";
     }
     
+    // установить токен
     void setToken(const String& token) {
         _token = token;
+    }
+    
+    // пропустить непрочитанные сообщения
+    void skipUpdates() {
+        ID = -1;
     }
 
     // подключение обработчика сообщений
@@ -1109,16 +1116,21 @@ private:
     uint8_t parseMessages(const String& str) {
         if (!str.startsWith(F("{\"ok\":true"))) return 3;       // ошибка запроса (неправильный токен итд)
         int16_t IDpos = str.indexOf(F("{\"update_id\":"), 0);   // первая позиция ключа update_id
-        
+        if (IDpos < 0) {
+            if (ID < 0) ID = 0;
+            return 1;
+        }
         int16_t counter = 0;
         while (true) {
             if (IDpos < 0 || IDpos == (int16_t)str.length()) break;
-            if (ID == 0) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt() + 1;   // холодный запуск, ищем ID
-            else counter++;                                                                     // иначе считаем пакеты
+            bool skip = (ID == -1);
+            if (!counter) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt() + 1;
+            else counter++;                                                           // иначе считаем пакеты
             
             int16_t textPos = IDpos;                                // стартовая позиция для поиска
             IDpos = str.indexOf(F("{\"update_id\":"), IDpos + 1);   // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
             if (IDpos < 0) IDpos = str.length();                    // если конец пакета - для удобства считаем что позиция ID в конце
+            if (skip) continue;
             
             String query;
             int16_t queryEnd = 0;

@@ -19,6 +19,7 @@ FB_DYNAMIC	KEYWORD1
 setChatID	KEYWORD2
 setPeriod	KEYWORD2
 setLimit	KEYWORD2
+skipUpdates	KEYWORD2
 attach	KEYWORD2
 detach	KEYWORD2
 tickManual	KEYWORD2
