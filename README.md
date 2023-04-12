@@ -871,6 +871,7 @@ void newMsg(FB_msg& msg) {
 - v2.23: пофиксил источник реального времени на editMessage
 - v2.24: фикс отправки больших файлов https://github.com/GyverLibs/FastBot/pull/17
 - v2.25: добавил skipUpdates - пропуск непрочитанных сообщений
+- v2.26: фикс некорректного отображения цифр после русских букв https://github.com/GyverLibs/FastBot/pull/37
 
 <a id="feedback"></a>
 ## Баги и обратная связь
