@@ -77,7 +77,7 @@ void FB_unicode(String &uStr) {
             case 'r': out += '\r'; break;
             case 't': out += '\t'; break;
             case 'u':
-                uBytes = strtol(uStr.c_str() + i + 1, NULL, HEX);
+                uBytes = strtol(uStr.substring(i + 1, i + 5).c_str(), NULL, HEX);
                 i += 4;
                 if ((uBytes >= 0xD800) && (uBytes <= 0xDBFF)) buf = uBytes;
                 else if ((uBytes >= 0xDC00) && (uBytes <= 0xDFFF)) {
