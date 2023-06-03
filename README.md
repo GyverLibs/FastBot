@@ -760,8 +760,9 @@ void message(FB_msg &msg) {
   if (msg.text == "restart") res = 1;
 }
 void loop() {
+  bot.tick();
   if (res) {
-    bot.tickManual();
+    bot.tickManual(); // Чтобы отметить сообщение прочитанным
     ESP.restart();
   }
 }
