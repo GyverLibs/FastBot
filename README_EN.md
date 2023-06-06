@@ -74,6 +74,7 @@ For comparison, we used a minimal example with sending a message to the chat and
     - [Text styling](#textmode)
     - [Sending files](#files)
     - [Download files](#download)
+    - [Location](#location)
     - [All sorts of tricks](#tricks)
 - [Versions](#versions)
 - [Bugs and feedback](#feedback)
@@ -348,6 +349,7 @@ String FB_64str(int64_t id); // transfer from int64_t to String
 #define FB_NO_URLENCODE // disable urlencode conversion for outgoing messages (slightly speeds up the program)
 #define FB_NO_OTA // disable support for OTA updates from chat
 #define FB_DYNAMIC // enable dynamic mode: the library takes longer to execute the request, but takes up 10 kb less memory in SRAM
+#define FB_WITH_LOCATION // enable location fields in message (FB_msg)
 ```
 
 <a id="usage"></a>
@@ -731,6 +733,29 @@ void newMsg(FB_msg& msg) {
   }
 }
 ```
+
+<a id="location"></a>
+## Location
+If defined `#define FB_WITH_LOCATION` bot append `location` field into message (FB_msg):
+
+```cpp
+struct FB_Location {
+  String &latitude;
+  String &longitude;
+};
+```
+
+Fields latitude/longitude will be filled if bot received location from user.
+
+```cpp
+void newMsg(FB_msg& msg) {
+  if (msg.location.latitude.length() > 0 && msg.location.longitude.length() > 0) {
+    bot.sendMessage("Lat: " + msg.location.latitude + ", Lon: " + msg.location.longitude, msg.chatID);
+  }
+}
+```
+
+See examples in `examples/location` and `examples/sunPosition`.
 
 <a id="tricks"></a>
 ## Tricks
