@@ -118,6 +118,7 @@ void setBufferSizes(uint16_t rx, uint16_t tx); // set buffer sizes for receiving
 
 void setTextMode(uint8_t mode); // text mode "to send": FB_TEXT, FB_MARKDOWN, FB_HTML (see textMode example)
 void notify(bool mode); // true/false enable/disable notifications from bot messages (on by default)
+void webPagePreview(bool mode);  // true/false enable/disable link previews for links in messages (on by default)
 void clearServiceMessages(bool state); // remove service messages about changing the name and pinning messages from the chat (default false)
 
 
