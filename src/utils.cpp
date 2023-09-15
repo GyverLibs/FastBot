@@ -8,6 +8,7 @@ void FB_escHTML(String& s) {
         case '<': out += F("&lt;"); break;
         case '>': out += F("&gt;"); break;
         case '&': out += F("&amp;"); break;
+        case '"': out += F("&quot;"); break;
         default: out += s[i]; break;
         }
     }

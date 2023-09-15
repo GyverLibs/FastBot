@@ -118,6 +118,7 @@ void setBufferSizes(uint16_t rx, uint16_t tx); // set buffer sizes for receiving
 
 void setTextMode(uint8_t mode); // text mode "to send": FB_TEXT, FB_MARKDOWN, FB_HTML (see textMode example)
 void notify(bool mode); // true/false enable/disable notifications from bot messages (on by default)
+void webPagePreview(bool mode); // true/false enable/disable link previews for links in messages (on by default)
 void clearServiceMessages(bool state); // remove service messages about changing the name and pinning messages from the chat (default false)
 
 
@@ -315,6 +316,17 @@ uint8_tdayWeek; // day of the week (Mon..Sun 1..7)
 uint16_t year; // year
 StringtimeString(); // time string in HH:MM:SS format
 String dateString(); // date string in DD.MM.YYYY format
+
+// =========== TEXT FORMATTING ===========
+// FB_formatting structure
+String bold(const String str);                      // Bold
+String italic(const String str);                    // Italic
+String underline(const String str);                 // Underline
+String strikethrough(const String str);             // Strikethrough
+String code(const String str);                      // Code
+String spoiler(const String str);                   // Spoiler
+String link(const String url);                      // Link
+String link(const String url, const String title);  // Link, title
 
 
 // ================ UPDATE =================
@@ -656,6 +668,28 @@ bot.sendMessage(F("*Bold*, ~Strike~, `code`, [alexgyver.ru](https://alexgyver.ru
 Output to chat: **Bold**, ~~Strike~~, `code`, [alexgyver.ru](https://alexgyver.ru/)
 
 > **Attention!** In FB_MARKDOWN mode, you cannot use `! + #`, the message will not be sent. It may be possible to fix it in the future (the problem of urlencode and escaping of reserved characters).
+
+The library has a `FB_formatting` structure, which was created for ease of working with the `FB_HTML` markup and dynamic variables.
+Available functions:
+```cpp
+  String bold(const String str);                     // Bold
+  String italic(const String str);                   // Italic
+  String underline(const String str);                // Underline
+  String strikethrough(const String str);            // Strikethrough
+  String code(const String str);                     // Code
+  String spoiler(const String str);                  // Spoiler
+  String link(const String url);                     // Link
+  String link(const String url, const String title); // Link, Title
+```
+
+Example:
+```cpp
+FB_formatting f;    // Initialization
+
+bot.setTextMode(FB_HTML);   // Be sure to install the `FB_HTML` markup
+bot.sendMessage(f.bold(f.italic("Guess the number under the spoiler: ")) + f.spoiler(String(random())));    // Output a random number to the chat message
+```
+Output to chat: <b><i>Guess the number under the spoiler: </i></b>⠌⡢⢑⠨⠌
 
 <a id="files"></a>
 ## Sending files (v2.20+)

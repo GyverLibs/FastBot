@@ -148,3 +148,70 @@ struct FB_Time {
         return str;
     }
 };
+
+struct FB_formatting {
+    // Жирный
+    String bold(const String str){
+		String s;
+		s += F("<b>");
+	    s += str;
+		s += F("</b>");
+        return s;
+    }
+ 
+    // Курсив
+    String italic(const String str) {
+		String s;
+		s += F("<i>");
+		s += str;
+		s += F("</i>");
+        return s;
+    }
+ 
+    // Подчёркнутый
+    String underline(const String str) {
+		String s;
+		s += F("<u>");
+		s += str;
+		s += F("</u>");
+        return s;
+    }
+ 
+    // Зачёркнутый
+    String strikethrough(const String str) {
+		String s;
+		s += F("<s>");
+		s += str;
+		s += F("</s>");
+        return s;
+    }
+
+    // Код
+    String code(const String str) {
+		String s;
+		s += F("<code>");
+        s += str;
+		s += F("</code>");
+        return s;
+    }
+
+    // Скрытый
+    String spoiler(const String str) {
+		String s;
+		s += F("<tg-spoiler>");
+		s += str;
+		s += F("</tg-spoiler>");
+        return s;
+    }
+ 
+    // Ссылка
+    String link(const String url, const String label = "") {
+		String s;
+		s += F("<a href=\"");
+        label != "" ? s += label : s += url;
+        s += F("\">");
+        s += url;
+        s += F("</a>");
+        return s;
+    }
+};
