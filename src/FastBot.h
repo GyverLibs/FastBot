@@ -229,6 +229,11 @@ public:
     void notify(bool mode) {
         notif = mode;
     }
+
+    // true/false вкл/выкл превью веб-страниц в сообщениях (по умолч. вкл)
+    void webPagePreview(bool mode){
+        web_page_preview = mode;
+    }
     
     // ===================== ТИКЕР =====================
     // ручная проверка обновлений
@@ -338,6 +343,7 @@ public:
         req += F("/sendSticker?sticker=");
         req += sid;
         if (!notif) req += F("&disable_notification=true");
+        if (!web_page_preview) req += F("&disable_web_page_preview=true");
         return sendRequest(req, id);
     }
     
@@ -1288,6 +1294,7 @@ private:
     int32_t _lastUsrMsg = 0, _lastBotMsg = 0;
     uint8_t parseMode = 0;
     bool notif = true;
+    bool web_page_preview = true;
     bool clrSrv = false;
     bool ovfFlag = 0;
     int8_t OTAstate = -1;

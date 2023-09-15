@@ -142,6 +142,7 @@ void skipUpdates();                             // пропустить непр
     
 void setTextMode(uint8_t mode);                 // режим текста "для отправки": FB_TEXT, FB_MARKDOWN, FB_HTML (см. пример textMode)
 void notify(bool mode);                         // true/false вкл/выкл уведомления от сообщений бота (по умолч. вкл)
+void webPagePreview(bool mode);                 // true/false вкл/выкл превью веб-страниц в сообщениях (по умолч. вкл)
 void clearServiceMessages(bool state);          // удалять из чата сервисные сообщения о смене названия и закреплении сообщений (умолч. false)
 
 
