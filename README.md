@@ -341,6 +341,16 @@ uint16_t year;          // год
 String timeString();    // строка времени формата ЧЧ:ММ:СС
 String dateString();    // строка даты формата ДД.ММ.ГГГГ
 
+// =========== ФОРМАТИРОВАНИЕ ТЕКСТА ===========
+// структура FB_formatting
+String bold(const String str);                      // Жирный
+String italic(const String str);                    // Курсив
+String underline(const String str);                 // Подчёркнутый
+String strikethrough(const String str);             // Зачёркнутый
+String code(const String str);                      // Код
+String spoiler(const String str);                   // Скрытый
+String link(const String url);                      // Ссылка
+String link(const String url, const String title);  // Ссылка, название
 
 // ================ ОБНОВЛЕНИЕ =================
 uint8_t update();       // ОТА обновление прошивки, вызывать внутри обработчика сообщения по флагу OTA
@@ -668,6 +678,28 @@ bot.sendMessage(F("*Bold*, ~Strike~, `code`, [alexgyver.ru](https://alexgyver.ru
 Выведет в чат: **Bold**, ~~Strike~~, `code`, [alexgyver.ru](https://alexgyver.ru/)
 
 > **Внимание!** В режиме FB_MARKDOWN нельзя использовать в сообщениях символы `! + #`, сообщение не отправится. Возможно получится исправить в будущем (проблема urlencode и экранирования зарезервированных символов).
+
+В библиотеке есть структура `FB_formatting`, которая была создана для простоты работы с разметой `FB_HTML` и динамическими переменными.
+Доступные функции:
+```cpp
+  String bold(const String str);                     // Жирный
+  String italic(const String str);                   // Курсив
+  String underline(const String str);                // Подчёркнутый
+  String strikethrough(const String str);            // Зачёркнутый
+  String code(const String str);                     // Код
+  String spoiler(const String str);                  // Скрытый
+  String link(const String url);                     // Ссылка
+  String link(const String url, const String title); // Ссылка, название
+```
+
+Пример:
+```cpp
+FB_formatting f;    // Инициализация
+
+bot.setTextMode(FB_HTML);   // Обязательно устанавливаем разметку `FB_HTML`
+bot.sendMessage(f.bold(f.italic("Угадай число под спойлером: ")) + f.spoiler(String(random())));    // Выводим случайное число в сообщение чата
+```
+Выведет в чат: <b><i>Угадай число под спойлером: </i></b>⠌⡢⢑⠨⠌
 
 <a id="files"></a>
 ## Отправка файлов (v2.20+)
