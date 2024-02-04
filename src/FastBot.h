@@ -375,6 +375,13 @@ public:
         }
         return sendRequest(req, id);
     }
+    //уведомление о том, что бот печатает сообщение
+    uint8_t sendTyping(const String& id) {
+      String req;
+      _addToken(req);
+      req += F("/sendChatAction?action=typing");
+      return sendRequest(req, id);
+    }
     
     // ==================== УДАЛЕНИЕ =====================    
     // удалить сообщение id
@@ -477,6 +484,31 @@ public:
         if (alert) req += F("&show_alert=True");
         _query_ptr = nullptr;
         return sendRequest(req);
+    }
+
+    // ================ EDIT INLINE AND MESSAGE TEXT =================
+uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String& str, const String& cbck){
+    return editMessageMenuCallback(msgid, text, str, cbck, chatIDs);
+}
+
+    uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String& str, const String& cbck, const String& id) {
+        if (!id.length()) return 5;
+        #ifndef FB_NO_URLENCODE
+        String utext;
+        FB_urlencode(text, utext);
+        if (parseMode == FB_MARKDOWN) FB_escMarkdown(utext);
+        #endif
+        String req;
+        _addToken(req);
+        req += F("/editMessageText?");
+        _addMsgID(req, msgid);
+        #ifndef FB_NO_URLENCODE
+        _addText(req, utext);
+        #else
+        _addText(req, text);
+        #endif
+        _addInlineMenu(req, str, cbck);
+        return sendRequest(req, id);
     }
     
     // ============= ГРУППОВЫЕ ДЕЙСТВИЯ =============

@@ -5,6 +5,9 @@
 
 [![Foo](https://img.shields.io/badge/ПОДПИСАТЬСЯ-НА%20ОБНОВЛЕНИЯ-brightgreen.svg?style=social&logo=telegram&color=blue)](https://t.me/GyverLibs)
 
+|⚠️⚠️⚠️<br>**В разработке находится [FastBot2](https://github.com/GyverLibs/FastBot2) - гораздо более лёгкая, более быстрая и более универсальная версия библиотеки! Приглашаю всех на бета-тест**<br>⚠️⚠️⚠️|
+| --- |
+
 # FastBot
 Многофункциональная быстрая библиотека для телеграм бота на esp8266/esp32
 - Работает на стандартных библиотеках
@@ -175,6 +178,8 @@ uint8_t sendSticker(String stickerID, String id);
 // ответить на callback текстом (text) и режимом (alert): FB_NOTIF - уведомление в чате, FB_ALERT - окно с кнопкой ОК
 uint8_t answer(String text, bool alert);
 
+//отправить уведомление о том, что бот печатает сообщение
+uint8_t sendTyping(const String& id);
 
 // =============== УДАЛЕНИЕ ===============
 // удалить сообщение с id (msgid) в указанном в setChatID чате ИЛИ передать id чата
