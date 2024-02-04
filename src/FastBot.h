@@ -375,6 +375,13 @@ public:
         }
         return sendRequest(req, id);
     }
+    //уведомление о том, что бот печатает сообщение
+    uint8_t sendTyping(const String& id) {
+      String req;
+      _addToken(req);
+      req += F("/sendChatAction?action=typing");
+      return sendRequest(req, id);
+    }
     
     // ==================== УДАЛЕНИЕ =====================    
     // удалить сообщение id

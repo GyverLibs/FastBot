@@ -178,6 +178,8 @@ uint8_t sendSticker(String stickerID, String id);
 // ответить на callback текстом (text) и режимом (alert): FB_NOTIF - уведомление в чате, FB_ALERT - окно с кнопкой ОК
 uint8_t answer(String text, bool alert);
 
+//отправить уведомление о том, что бот печатает сообщение
+uint8_t sendTyping(const String& id);
 
 // =============== УДАЛЕНИЕ ===============
 // удалить сообщение с id (msgid) в указанном в setChatID чате ИЛИ передать id чата
