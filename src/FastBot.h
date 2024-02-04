@@ -1271,6 +1271,19 @@ private:
             String data;
             find(str, data, textPos, F("\"data\":\""), '\"', IDpos);
 
+            #ifdef FB_WITH_LOCATION
+            bool location = find(str, F("\"location\""), textPos, IDpos);
+            String lat;
+            String lon;
+            FB_Location fb_location {lat, lon};
+            if (location) {
+                find(str, lat, textPos, F("\"latitude\":"), ',', IDpos);
+                find(str, lon, textPos, F("\"longitude\":"), '}', IDpos);
+
+                Serial.printf("Location: lat=%s, lon=%s\n", lat, lon);
+            }
+            #endif
+
             #ifndef FB_NO_UNICODE
             FB_unicode(first_name);
             FB_unicode(text);
@@ -1298,6 +1311,9 @@ private:
                 first_name,
                 first_name,
                 _lastUsrMsg,
+                #ifdef FB_WITH_LOCATION
+                fb_location
+                #endif
             };
             _callback(msg);
             if (_query_ptr) answer();   // отвечаем на коллбэк, если юзер не ответил

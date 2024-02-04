@@ -102,6 +102,7 @@ ESP8266 (SDK v2.6+), ESP32
     - [Оформление текста](#textmode)
     - [Отправка файлов](#files)
     - [Скачивание файлов](#download)
+    - [Местоположение](#location)
     - [Всякие трюки](#tricks)
 - [Версии](#versions)
 - [Баги и обратная связь](#feedback)
@@ -377,6 +378,7 @@ String FB_64str(int64_t id);        // перевод из int64_t в String
 #define FB_NO_URLENCODE     // отключить конвертацию urlencode для исходящих сообщений (чуть ускорит программу)
 #define FB_NO_OTA           // отключить поддержку OTA обновлений из чата
 #define FB_DYNAMIC          // включить динамический режим: библиотека дольше выполняет запрос, но занимает на 10 кб меньше памяти в SRAM
+#define FB_WITH_LOCATION    // включить дополнительное поле location (содержащее широту и долготу) в сообщении (см примеры location и sunPosition)
 ```
 
 <a id="usage"></a>
@@ -747,6 +749,32 @@ void newMsg(FB_msg& msg) {
   }
 }
 ```
+
+<a id="location"></a>
+## Местоположение
+При указанной настройке `#define FB_WITH_LOCATION` бот добавляет поле `location` в обрабатываемые сообщения (FB_msg):
+
+```cpp
+struct FB_Location {
+  String &latitude;
+  String &longitude;
+};
+```
+
+В случае если боту прислали географическое местоположение (location), то поля latitude/longitude
+заполняюися координатами из полученного ботом location:
+
+```cpp
+// обработчик сообщений
+void newMsg(FB_msg& msg) {
+  if (msg.location.latitude.length() > 0 && msg.location.longitude.length() > 0) {
+    bot.sendMessage("Lat: " + msg.location.latitude + ", Lon: " + msg.location.longitude, msg.chatID);
+  }
+}
+```
+
+См примеры `examples/location` и `examples/sunPosition`.
+
 
 <a id="tricks"></a>
 ## Трюки

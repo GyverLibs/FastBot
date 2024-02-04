@@ -72,33 +72,35 @@ For comparison, a minimum example was used with sending a message to the chat an
   - Refresh Request: 1 second
 
 ## Content
-- [installation] (# Install)
-- [initialization] (#init)
-- [documentation] (#docs)
-- [use] (#usage)
-    - [sending messages] (# SEND)
-    - [Parsing messages] (#inbox)
-    - [ticker] (#tick)
-    - [Minimum example] (# Example)
-    - [appeal to messages] (#msgid)
-    - [System Settlement] (#sticker)
-    - [menu] (#menu)
-    - [ordinary menu] (# BASIC)
-    - [Inline menu] (#inline)
-    - [Inline menu with collbe] (#callb)
-    - [response to collback] (# Anter)
-    - [time module] (#unix)
-    - [The time of receipt of the message] (#time)
-    - [Real Time Watch] (# RTC)
-    - [Chat firmware update] (# OTA)
-    - [text design] (#textmode)
-    - [Sending files] (#files)
-    - [download files] (#download)
-    - [all sorts of tricks] (#tricks)
-- [versions] (#varsions)
-- [bugs and feedback] (#fedback)
+- [Install](#install)
+- [Initialization](#init)
+- [Documentation](#docs)
+- [Usage](#usage)
+    - [Sending messages](#send)
+    - [Message Parsing](#inbox)
+    - [Ticker](#tick)
+    - [Minimal Example](#example)
+    - [Referring to messages](#msgid)
+    - [Send stickers](#sticker)
+    - [Menu](#menu)
+    - [Normal menu](#basic)
+    - [Inline menu](#inline)
+    - [Inline menu with callback](#callb)
+    - [Response to callback](#answer)
+    - [Time module](#unix)
+    - [Time to receive message](#time)
+    - [Real Time Clock](#rtc)
+    - [Firmware update from chat](#ota)Cranberry
+    - [Text styling](#textmode)
+    - [Sending files](#files)
+    - [Download files](#download)
+    - [Location](#location)
+    - [All sorts of tricks](#tricks)
+- [Versions](#versions)
+- [Bugs and feedback](#feedback)
 
-<a id="install"> </a>
+<a id="install"></a>
+
 ## Installation
 - The library can be found by the name ** farbot ** and installed through the library manager in:
     - Arduino ide
@@ -361,13 +363,14 @@ Int64_T FB_STR64 (COST String & S);// Translating from String to Int64_T
 String fb_64str (int64_t ID);// Translation from int64_t to string
 
 
-// ========== The defines of settings ==============
-// announce before connecting the library
-#define fb_no_unicode // Disable Unicode converting for incoming messages (slightly accelerate the program)
-#define fb_no_urlencode // Disable Urlencode converting for outgoing messages (slightly accelerate the program)
-#define fb_no_ota // Disable OTA support for updates from chat
-#define fb_dynamic // Turn on the dynamic mode: the library executes a query longer, but takes 10 kb less memory in SRAM
-`` `
+// ========== DEFINE SETTINGS ===========
+// declare BEFORE linking the library
+#define FB_NO_UNICODE // disable Unicode conversion for incoming messages (slightly speed up the program)
+#define FB_NO_URLENCODE // disable urlencode conversion for outgoing messages (slightly speeds up the program)
+#define FB_NO_OTA // disable support for OTA updates from chat
+#define FB_DYNAMIC // enable dynamic mode: the library takes longer to execute the request, but takes up 10 kb less memory in SRAM
+#define FB_WITH_LOCATION // enable location fields in message (FB_msg)
+```
 
 <a id="usage"> </a>
 ## Usage
@@ -738,7 +741,31 @@ VOID NewMSG (FB_MSG & MSG) {
 }
 `` `
 
-<a id="tricks"> </a>
+<a id="location"></a>
+## Location
+If defined `#define FB_WITH_LOCATION` bot append `location` field into message (FB_msg):
+
+```cpp
+struct FB_Location {
+  String &latitude;
+  String &longitude;
+};
+```
+
+Fields latitude/longitude will be filled if bot received location from user.
+
+```cpp
+void newMsg(FB_msg& msg) {
+  if (msg.location.latitude.length() > 0 && msg.location.longitude.length() > 0) {
+    bot.sendMessage("Lat: " + msg.location.latitude + ", Lon: " + msg.location.longitude, msg.chatID);
+  }
+}
+```
+
+See examples in `examples/location` and `examples/sunPosition`.
+
+<a id="tricks"></a>
+
 ## Tricks
 ### Reboot
 Messages are noted read at the next (relative to the current message processor) update in Tick (), that is, after at least a tuned timeout.
