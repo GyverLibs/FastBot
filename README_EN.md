@@ -743,24 +743,25 @@ VOID NewMSG (FB_MSG & MSG) {
 ### Reboot
 Messages are noted read at the next (relative to the current message processor) update in Tick (), that is, after at least a tuned timeout.
 If you want to restart ESP on command, then this is the design
-`` `CPP
+```CPP
 VOID Message (FB_MSG & MSG) {
   if (msg.text == "restart") ESP.Restart ();
 }
-`` `
+```
 He will lead to a bootle (endless rebooting), because the message will not be noted read.You can raise the flag by which to go into the reboot, having previously caused Tickmanual:
-`` `CPP
+```CPP
 Bool Res = 0;
 VOID Message (FB_MSG & MSG) {
   if (msg.text == "restart") res = 1;
 }
-VOID loop () {
+void loop() {
+  bot.tick();
   if (res) {
-    Bot.tickmanual ();
-    ESP.Restart ();
+    bot.tickManual(); // To mark the message as read
+    ESP.restart();
   }
 }
-`` `
+```
 
 ### Pass "missed" messages based on time
 The library has a Skipupdates function that allows you to skip all unread messages.But sometimes it is convenient to navigate in time.
