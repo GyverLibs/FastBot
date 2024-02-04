@@ -560,7 +560,35 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
     uint8_t setChatDescription(const String& descr) {
         return setChatDescription(descr, chatIDs);
     }
-    
+
+    // установить описание бота (Может быть использовано как энергонезависимое хранилище)
+    // можно добавить параметр language_code по стандарту ISO 639-1, и тогда для каждого 
+    // языка можно хранить отдельный description
+    uint8_t setMyDescription(const String& descr) {
+        #ifndef FB_NO_URLENCODE
+        String udescr;
+        FB_urlencode(descr, udescr);
+        #endif
+        String req;
+        _addToken(req);
+        req += F("/setMyDescription?description=");
+        #ifndef FB_NO_URLENCODE
+        req += udescr;
+        #else
+        req += descr;
+        #endif
+        return sendRequest(req);
+    }
+
+    // прочесть описание бота
+    const char* getMyDescription() {
+        String req;
+        _addToken(req);
+        req += F("/getMyDescription");
+        sendRequest(req);
+        return _my_desc.c_str();
+    }
+        
     // закрепить сообщение с ID msgid
     uint8_t pinMessage(int32_t msgid, const String& id) {
         if (!id.length()) return 5;
@@ -1300,8 +1328,12 @@ private:
             *_file_ptr += '/';
             *_file_ptr += buf;
         }
+        if ( find(answ, buf, st, F("\"description\":\""), '\"', answ.length())) {
+            _my_desc = buf;
+        }
         return OK;
     }
+
     
     HTTPClient *_http = nullptr;
     #if !defined(FB_DYNAMIC) && defined(ESP8266)
@@ -1313,6 +1345,7 @@ private:
     String _otaID;
     String* _file_ptr = nullptr;
     String* _query_ptr = nullptr;
+    String _my_desc;
     uint16_t _ovf, _prd, _limit;
     int32_t ID = 0;
     uint32_t tmr = 0;
