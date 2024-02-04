@@ -31,16 +31,7 @@ int64_t FB_str64(const String &s) {
     return atoll(s.c_str());
 }
 String FB_64str(int64_t id) {
-    String s;
-    int32_t s1 = (int64_t)id % 1000000000;
-    int32_t s2 = (int64_t)id / 1000000000;
-    if (s2) {
-        s += s2;
-        s += abs(s1);
-    } else {
-        s += s1;
-    }
-    return s;
+    return String(id);
 }
 
 // упрощённый urlencode (до 38 ASCII + space)
