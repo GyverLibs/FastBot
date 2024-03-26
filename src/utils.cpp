@@ -23,7 +23,6 @@ void FB_escMarkdown(String& s) {
         if (strchr(FB_escList, s[i]) != 0) out += '\\';
         out += s[i];
     }
-    Serial.println(out);
     s = out;
 }
 
