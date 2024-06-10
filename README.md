@@ -6,7 +6,7 @@
 
 [![Foo](https://img.shields.io/badge/ПОДПИСАТЬСЯ-НА%20ОБНОВЛЕНИЯ-brightgreen.svg?style=social&logo=telegram&color=blue)](https://t.me/GyverLibs)
 
-|⚠️⚠️⚠️<br>**В разработке находится [FastBot2](https://github.com/GyverLibs/FastBot2) - гораздо более лёгкая, более быстрая и более универсальная версия библиотеки! Приглашаю всех на бета-тест**<br>⚠️⚠️⚠️|
+|⚠️⚠️⚠️<br>**Появилась [FastBot2](https://github.com/GyverLibs/FastBot2) - более лёгкая, быстрая и гораздо более универсальная версия библиотеки!**<br>⚠️⚠️⚠️|
 | --- |
 
 # FastBot
