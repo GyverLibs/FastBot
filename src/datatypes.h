@@ -40,6 +40,9 @@ struct FB_msg {
     String& last_name;  // фамилия
     int32_t ID;         // ID сообщения
 
+    uint32_t update_id;
+    String& query_id;
+
     #ifdef FB_WITH_LOCATION
     FB_Location location;
     #endif

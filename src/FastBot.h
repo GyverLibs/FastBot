@@ -1,6 +1,6 @@
 /*
     Очень простая и быстрая библиотека для телеграм бота на esp8266/esp32
-    Документация: 
+    Документация:
     GitHub: https://github.com/GyverLibs/FastBot
     Возможности:
     - Работает на стандартных библиотеках без SSL
@@ -16,7 +16,7 @@
     - Встроенный urlencode для исходящих сообщений
     - Встроенные часы реального времени с синхронизацией от сервера Telegram
     - Возможность OTA обновления прошивки .bin файлом из чата Telegram
-    
+
     AlexGyver, alex@alexgyver.ru
     https://alexgyver.ru/
     MIT License
@@ -38,7 +38,7 @@
         - Оптимизация памяти
         - Ускорил работу
         - Пофиксил работу через раз в сценарии "эхо"
-    
+
     v2.0:
         - Убрал минимум в 3200 мс
         - Добавил обработку Юникода (русский язык, эмодзи). Спасибо Глебу Жукову!
@@ -49,17 +49,17 @@
         - Добавил ID юзера
         - Добавил query для ответа на коллбэк
         - Добавил редактирование сообщений и кучу всего
-    
-    v2.1: 
+
+    v2.1:
         - Ещё оптимизация
         - Добавил форматирование текста (markdown, html)
         - Добавил ответ на сообщение
-    
-    v2.2: 
+
+    v2.2:
         - Большая оптимизация памяти
         - Добавил notify() - уведомления от сообщений бота
         - Добавил единоразовый показ клавиатуры
-        
+
     v2.3: Небольшая оптимизация
     v2.4: Добавил url encode для текста сообщений
     v2.5: Добавил флаги в FB_msg: сообщение отредактировано и сообщение отправлено ботом. Улучшил парсинг текста
@@ -68,7 +68,7 @@
     v2.8: Убрал лишний вывод в сериал, GMT можно в минутах
     v2.9: Исправлена бага в парсинге, парсинг ускорен, добавлен вывод форматированного времени, добавлена фамилия и время сообщения
     v2.10: Добавлены функции для изменения названия и описания чата, закрепления и открепления сообщений. Убраны edit/deleteMessageID, editMenuID
-    v2.11: 
+    v2.11:
         - Оптимизация, исправление багов
         - Callback data теперь парсится отдельно в data
         - Переделана работа с callback
@@ -131,20 +131,21 @@
 
 #include <Arduino.h>
 #include <StreamString.h>
-#include "utils.h"
+
 #include "datatypes.h"
+#include "utils.h"
 
 #ifdef ESP8266
-#include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <ESP8266WiFi.h>
 #ifndef FB_NO_OTA
 #include <ESP8266httpUpdate.h>
 #endif
 #include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
-#else   // ESP32
-#include <WiFi.h>
+#else  // ESP32
 #include <HTTPClient.h>
+#include <WiFi.h>
 #ifndef FB_NO_OTA
 #include <HTTPUpdate.h>
 #endif
@@ -153,7 +154,7 @@
 
 // ================================
 class FastBot {
-public:
+   public:
     // инициализация (токен, макс кол-во сообщений на запрос, макс символов, период)
     FastBot(String token = "", uint16_t limit = 10, uint16_t ovf = 0, uint16_t period = 3600) {
         _http = new HTTPClient;
@@ -163,48 +164,48 @@ public:
         _limit = limit;
         _ovf = ovf;
         _prd = period;
-        #if !defined(FB_DYNAMIC) && defined(ESP8266)
+#if !defined(FB_DYNAMIC) && defined(ESP8266)
         setBufferSizes(512, 512);
         client.setInsecure();
-        #endif
+#endif
     }
-    
+
     ~FastBot() {
         if (_http) delete _http;
     }
-    
+
     // ===================== НАСТРОЙКИ =====================
     // установить размеры буфера на приём и отправку
     void setBufferSizes(uint16_t rx, uint16_t tx) {
-        #if !defined(FB_DYNAMIC) && defined(ESP8266)
+#if !defined(FB_DYNAMIC) && defined(ESP8266)
         client.setBufferSizes(rx, tx);
-        #endif
+#endif
     }
-    
+
     // макс кол-во сообщений на запрос к API
     void setLimit(uint16_t limit) {
         _limit = limit;
     }
-    
+
     // период опроса
     void setPeriod(uint16_t period) {
         _prd = period;
     }
-    
+
     // установка ID чата для парсинга сообщений. Можно ввести через запятую сколько угодно
     void setChatID(const String& chatID) {
-        chatIDs = chatID;        
+        chatIDs = chatID;
     }
     void setChatID(int64_t id) {
         if (id) chatIDs = FB_64str(id);
         else chatIDs = "";
     }
-    
+
     // установить токен
     void setToken(const String& token) {
         _token = token;
     }
-    
+
     // пропустить непрочитанные сообщения
     void skipUpdates() {
         ID = -1;
@@ -214,22 +215,22 @@ public:
     void attach(void (*handler)(FB_msg& msg)) {
         _callback = handler;
     }
-    
+
     // отключение обработчика сообщений
     void detach() {
         _callback = nullptr;
     }
-    
+
     // режим обработки текста: FB_TEXT, FB_MARKDOWN, FB_HTML
     void setTextMode(uint8_t mode) {
         parseMode = mode;
     }
-    
+
     // true/false вкл/выкл уведомления от сообщений бота (по умолч. вкл)
     void notify(bool mode) {
         notif = mode;
     }
-    
+
     // ===================== ТИКЕР =====================
     // ручная проверка обновлений
     uint8_t tickManual() {
@@ -238,31 +239,31 @@ public:
         req.reserve(120);
         _addToken(req);
         req += F("/getUpdates?limit=");
-        req += ovfFlag ? 1 : _limit;    // берём по 1 сообщению если переполнен
+        req += ovfFlag ? 1 : _limit;  // берём по 1 сообщению если переполнен
         req += F("&offset=");
         req += ID;
-        //req += F("&allowed_updates=[\"update_id\",\"message\",\"edited_message\",\"channel_post\",\"edited_channel_post\",\"callback_query\"]");
-        
-        #ifdef ESP8266
-        #ifdef FB_DYNAMIC
+        // req += F("&allowed_updates=[\"update_id\",\"message\",\"edited_message\",\"channel_post\",\"edited_channel_post\",\"callback_query\"]");
+
+#ifdef ESP8266
+#ifdef FB_DYNAMIC
         BearSSL::WiFiClientSecure client;
         client.setInsecure();
-        #endif
+#endif
         if (!_http->begin(client, req)) return 4;  // ошибка подключения
-        #else
-        if (!_http->begin(req)) return 4;   // ошибка подключения
-        #endif
+#else
+        if (!_http->begin(req)) return 4;  // ошибка подключения
+#endif
         int answ = _http->GET();
         if (answ != HTTP_CODE_OK) {
             _http->end();
-            if (answ == -1 && _http) {      // заплатка для есп32
+            if (answ == -1 && _http) {  // заплатка для есп32
                 delete _http;
                 _http = new HTTPClient;
             }
-            return 3;   // ошибка сервера телеграм
+            return 3;  // ошибка сервера телеграм
         }
-        
-        #ifndef FB_NO_OTA
+
+#ifndef FB_NO_OTA
         // была попытка OTA обновления. Обновляемся после ответа серверу!
         if (OTAstate >= 0) {
             String ota;
@@ -273,23 +274,23 @@ public:
             if (OTAstate == 2) ESP.restart();
             OTAstate = -1;
         }
-        #endif
-        
+#endif
+
         int size = _http->getSize();
-        ovfFlag = size > 25000;         // 1 полное сообщение на русском языке или ~5 на английском
-        uint8_t status = 1;             // OK
-        if (size) {                     // не пустой ответ?
+        ovfFlag = size > 25000;  // 1 полное сообщение на русском языке или ~5 на английском
+        uint8_t status = 1;      // OK
+        if (size) {              // не пустой ответ?
             StreamString sstring;
-            if (!ovfFlag && sstring.reserve(size + 1)) {    // не переполнен и хватает памяти
-                _http->writeToStream(&sstring);             // копируем
-                _http->end();                               // завершаем
-                return parseMessages(sstring);              // парсим
-            } else status = 2;                              // переполнение
-        } else status = 3;                                  // пустой ответ        
+            if (!ovfFlag && sstring.reserve(size + 1)) {  // не переполнен и хватает памяти
+                _http->writeToStream(&sstring);           // копируем
+                _http->end();                             // завершаем
+                return parseMessages(sstring);            // парсим
+            } else status = 2;                            // переполнение
+        } else status = 3;                                // пустой ответ
         _http->end();
         return status;
     }
-    
+
     // проверка обновлений по таймеру
     uint8_t tick() {
         if (!*_callback) return 7;
@@ -300,18 +301,18 @@ public:
         }
         return 0;
     }
-    
+
     // ===================== СООБЩЕНИЯ =====================
     // ID последнего отправленного ботом сообщения
     int32_t lastBotMsg() {
         return _lastBotMsg;
     }
-    
+
     // ID последнего отправленного юзером сообщения
     int32_t lastUsrMsg() {
         return _lastUsrMsg;
     }
-    
+
     // ===================== ОТПРАВКА =====================
     // отправить команду API (пример: "/sendSticker?sticker=123456")
     uint8_t sendCommand(const String& cmd, const String& id) {
@@ -321,11 +322,11 @@ public:
         req += cmd;
         return sendRequest(req, id);
     }
-    
+
     uint8_t sendCommand(const String& cmd) {
         return sendCommand(cmd, chatIDs);
     }
-    
+
     // отправить стикер
     uint8_t sendSticker(const String& sid) {
         return sendSticker(sid, chatIDs);
@@ -340,7 +341,7 @@ public:
         if (!notif) req += F("&disable_notification=true");
         return sendRequest(req, id);
     }
-    
+
     // отправить сообщение
     uint8_t sendMessage(const String& msg) {
         return replyMessage(msg, 0, chatIDs);
@@ -349,7 +350,7 @@ public:
     uint8_t sendMessage(const String& msg, const String& id) {
         return replyMessage(msg, 0, id);
     }
-    
+
     // ответить на сообщение
     uint8_t replyMessage(const String& msg, int32_t replyID) {
         return replyMessage(msg, replyID, chatIDs);
@@ -357,38 +358,38 @@ public:
 
     uint8_t replyMessage(const String& msg, int32_t replyID, const String& id) {
         if (!id.length()) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String umsg;
         FB_urlencode(msg, umsg);
         if (parseMode == FB_MARKDOWN) FB_escMarkdown(umsg);
-        #endif
+#endif
         String req;
         _addToken(req);
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         _addMessage(req, umsg);
-        #else
+#else
         _addMessage(req, msg);
-        #endif
+#endif
         if (replyID) {
             req += F("&reply_to_message_id=");
             req += replyID;
         }
         return sendRequest(req, id);
     }
-    //уведомление о том, что бот печатает сообщение
+    // уведомление о том, что бот печатает сообщение
     uint8_t sendTyping(const String& id) {
-      String req;
-      _addToken(req);
-      req += F("/sendChatAction?action=typing");
-      return sendRequest(req, id);
+        String req;
+        _addToken(req);
+        req += F("/sendChatAction?action=typing");
+        return sendRequest(req, id);
     }
-    
-    // ==================== УДАЛЕНИЕ =====================    
+
+    // ==================== УДАЛЕНИЕ =====================
     // удалить сообщение id
     uint8_t deleteMessage(int32_t msgid) {
         return deleteMessage(msgid, chatIDs);
     }
-    
+
     uint8_t deleteMessage(int32_t msgid, const String& id) {
         if (!id.length()) return 5;
         String req;
@@ -397,7 +398,7 @@ public:
         _addMsgID(req, msgid);
         return sendRequest(req, id);
     }
-    
+
     // ==================== РЕДАКТИРОВАНИЕ =====================
     // редактировать сообщение id
     uint8_t editMessage(int32_t msgid, const String& text) {
@@ -406,29 +407,29 @@ public:
 
     uint8_t editMessage(int32_t msgid, const String& text, const String& id) {
         if (!id.length()) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String utext;
         FB_urlencode(text, utext);
         if (parseMode == FB_MARKDOWN) FB_escMarkdown(utext);
-        #endif
+#endif
         String req;
         _addToken(req);
         req += F("/editMessageText?");
         _addMsgID(req, msgid);
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         _addText(req, utext);
-        #else
+#else
         _addText(req, text);
-        #endif
+#endif
         return sendRequest(req, id);
     }
-    
+
     // ================ РЕДАКТИРОВАНИЕ ИНЛАЙН =================
     // редактировать меню id
     uint8_t editMenuCallback(int32_t msgid, const String& str, const String& cbck) {
         return editMenuCallback(msgid, str, cbck, chatIDs);
     }
-    
+
     uint8_t editMenuCallback(int32_t msgid, const String& str, const String& cbck, const String& id) {
         if (!id.length()) return 5;
         String req;
@@ -438,12 +439,12 @@ public:
         _addInlineMenu(req, str, cbck);
         return sendRequest(req, id);
     }
-    
+
     // редактировать callback меню id
     uint8_t editMenu(int32_t msgid, const String& str) {
         return editMenu(msgid, str, chatIDs);
     }
-    
+
     uint8_t editMenu(int32_t msgid, const String& str, const String& id) {
         if (!id.length()) return 5;
         String req;
@@ -453,7 +454,7 @@ public:
         _addInlineMenu(req, str, "");
         return sendRequest(req, id);
     }
-    
+
     // ответить на callback текстом и true - предупреждением
     uint8_t answer() {
         if (!_query_ptr) return 5;
@@ -464,119 +465,124 @@ public:
         _query_ptr = nullptr;
         return sendRequest(req);
     }
-    
+
     uint8_t answer(const String& text, bool alert = false) {
         if (!_query_ptr) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String utext;
         FB_urlencode(text, utext);
         if (parseMode == FB_MARKDOWN) FB_escMarkdown(utext);
-        #endif
+#endif
         String req;
         _addToken(req);
         req += F("/answerCallbackQuery?callback_query_id=");
         req += *_query_ptr;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         _addText(req, utext);
-        #else
+#else
         _addText(req, text);
-        #endif
+#endif
         if (alert) req += F("&show_alert=True");
         _query_ptr = nullptr;
         return sendRequest(req);
     }
 
+    // не отвечать автоматически на query этого апдейта
+    void noAnswer() {
+        _query_ptr = nullptr;
+    }
+
     // ================ EDIT INLINE AND MESSAGE TEXT =================
-uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String& str, const String& cbck){
-    return editMessageMenuCallback(msgid, text, str, cbck, chatIDs);
-}
+    uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String& str, const String& cbck) {
+        return editMessageMenuCallback(msgid, text, str, cbck, chatIDs);
+    }
 
     uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String& str, const String& cbck, const String& id) {
         if (!id.length()) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String utext;
         FB_urlencode(text, utext);
         if (parseMode == FB_MARKDOWN) FB_escMarkdown(utext);
-        #endif
+#endif
         String req;
         _addToken(req);
         req += F("/editMessageText?");
         _addMsgID(req, msgid);
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         _addText(req, utext);
-        #else
+#else
         _addText(req, text);
-        #endif
+#endif
         _addInlineMenu(req, str, cbck);
         return sendRequest(req, id);
     }
-    
+
     // ============= ГРУППОВЫЕ ДЕЙСТВИЯ =============
     // удалять из чата сервисные сообщения о смене названия и закреплении сообщений
     void clearServiceMessages(bool state) {
         clrSrv = state;
     }
-    
+
     // установить имя группы (бот должен иметь права админа)
     uint8_t setChatTitle(const String& title, const String& id) {
         if (!id.length()) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String utitle;
         FB_urlencode(title, utitle);
-        #endif
+#endif
         String req;
         _addToken(req);
         req += F("/setChatTitle?title=");
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         req += utitle;
-        #else
+#else
         req += title;
-        #endif
+#endif
         return sendRequest(req, id);
     }
-    
+
     uint8_t setChatTitle(const String& title) {
         return setChatTitle(title, chatIDs);
     }
-    
+
     // установить описание группы (бот должен иметь права админа)
     uint8_t setChatDescription(const String& descr, const String& id) {
         if (!id.length()) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String udescr;
         FB_urlencode(descr, udescr);
-        #endif
+#endif
         String req;
         _addToken(req);
         req += F("/setChatDescription?description=");
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         req += udescr;
-        #else
+#else
         req += descr;
-        #endif
+#endif
         return sendRequest(req, id);
     }
-    
+
     uint8_t setChatDescription(const String& descr) {
         return setChatDescription(descr, chatIDs);
     }
 
     // установить описание бота (Может быть использовано как энергонезависимое хранилище)
-    // можно добавить параметр language_code по стандарту ISO 639-1, и тогда для каждого 
+    // можно добавить параметр language_code по стандарту ISO 639-1, и тогда для каждого
     // языка можно хранить отдельный description
     uint8_t setMyDescription(const String& descr) {
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String udescr;
         FB_urlencode(descr, udescr);
-        #endif
+#endif
         String req;
         _addToken(req);
         req += F("/setMyDescription?description=");
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         req += udescr;
-        #else
+#else
         req += descr;
-        #endif
+#endif
         return sendRequest(req);
     }
 
@@ -588,7 +594,7 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
         sendRequest(req);
         return _my_desc.c_str();
     }
-        
+
     // закрепить сообщение с ID msgid
     uint8_t pinMessage(int32_t msgid, const String& id) {
         if (!id.length()) return 5;
@@ -598,11 +604,11 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
         _addMsgID(req, msgid);
         return sendRequest(req, id);
     }
-    
+
     uint8_t pinMessage(int32_t msgid) {
         return pinMessage(msgid, chatIDs);
     }
-    
+
     // открепить сообщение с ID msgid
     uint8_t unpinMessage(int32_t msgid, const String& id) {
         if (!id.length()) return 5;
@@ -612,11 +618,11 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
         _addMsgID(req, msgid);
         return sendRequest(req, id);
     }
-    
+
     uint8_t unpinMessage(int32_t msgid) {
         return unpinMessage(msgid, chatIDs);
     }
-    
+
     // открепить все сообщения в чате
     uint8_t unpinAll(const String& id) {
         if (!id.length()) return 5;
@@ -625,40 +631,40 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
         req += F("/unpinAllChatMessages?");
         return sendRequest(req, id);
     }
-    
+
     uint8_t unpinAll() {
         return unpinAll(chatIDs);
     }
-    
+
     // ===================== МЕНЮ =====================
     // показать меню
     uint8_t showMenu(const String& str, bool once = false) {
         return showMenuText(F("Open Menu"), str, chatIDs, once);
     }
-    
+
     uint8_t showMenu(const String& str, const String& id, bool once = false) {
         return showMenuText(F("Open Menu"), str, id, once);
     }
-    
+
     // показать меню с текстом
     uint8_t showMenuText(const String& msg, const String& str, bool once = false) {
         return showMenuText(msg, str, chatIDs, once);
     }
-    
+
     uint8_t showMenuText(const String& msg, const String& str, const String& id, bool once = false) {
         if (!id.length()) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String umsg;
         FB_urlencode(msg, umsg);
         if (parseMode == FB_MARKDOWN) FB_escMarkdown(umsg);
-        #endif
+#endif
         String req;
         _addToken(req);
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         _addMessage(req, umsg);
-        #else
+#else
         _addMessage(req, msg);
-        #endif
+#endif
         req += F("&reply_markup={\"keyboard\":[[\"");
         FB_Parser t;
         while (t.parseNT(str)) {
@@ -671,72 +677,72 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
         req += '}';
         return sendRequest(req, id);
     }
-    
+
     // закрыть меню
     uint8_t closeMenu() {
         return closeMenuText(F("Close Menu"), chatIDs);
     }
-    
+
     uint8_t closeMenu(const String& id) {
         return closeMenuText(F("Close Menu"), id);
     }
-    
+
     // закрыть меню с текстом
     uint8_t closeMenuText(const String& msg) {
         return closeMenuText(msg, chatIDs);
     }
-    
+
     uint8_t closeMenuText(const String& msg, const String& id) {
         if (!id.length()) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String umsg;
         FB_urlencode(msg, umsg);
         if (parseMode == FB_MARKDOWN) FB_escMarkdown(umsg);
-        #endif
+#endif
         String req;
         _addToken(req);
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         _addMessage(req, umsg);
-        #else
+#else
         _addMessage(req, msg);
-        #endif
+#endif
         req += F("&reply_markup={\"remove_keyboard\":true}");
         return sendRequest(req, id);
     }
-    
+
     // =================== ИНЛАЙН МЕНЮ ===================
     // показать инлайн меню
     uint8_t inlineMenu(const String& msg, const String& str) {
         return inlineMenuCallback(msg, str, "", chatIDs);
     }
-    
+
     uint8_t inlineMenu(const String& msg, const String& str, const String& id) {
         return inlineMenuCallback(msg, str, "", id);
     }
-    
+
     // показать инлайн меню с коллбэками
     uint8_t inlineMenuCallback(const String& msg, const String& str, const String& cbck) {
         return inlineMenuCallback(msg, str, cbck, chatIDs);
     }
-    
+
     uint8_t inlineMenuCallback(const String& msg, const String& str, const String& cbck, const String& id) {
         if (!id.length()) return 5;
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         String umsg;
         FB_urlencode(msg, umsg);
         if (parseMode == FB_MARKDOWN) FB_escMarkdown(umsg);
-        #endif
+#endif
         String req;
         _addToken(req);
-        #ifndef FB_NO_URLENCODE
+#ifndef FB_NO_URLENCODE
         _addMessage(req, umsg);
-        #else
+#else
         _addMessage(req, msg);
-        #endif
+#endif
         _addInlineMenu(req, str, cbck);
         return sendRequest(req, id);
     }
-    
+
     // ===================== ВСЯКОЕ =====================
     // отправить запрос
     uint8_t sendRequest(String& req, const String& id) {
@@ -754,51 +760,51 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
         }
         return status;
     }
-    
+
     uint8_t sendRequest(String& req) {
-        #ifdef ESP8266
-        #ifdef FB_DYNAMIC
+#ifdef ESP8266
+#ifdef FB_DYNAMIC
         BearSSL::WiFiClientSecure client;
         client.setInsecure();
-        #endif
+#endif
         if (!_http->begin(client, req)) return 4;  // ошибка подключения
-        #else
+#else
         if (!_http->begin(req)) return 4;
-        #endif
+#endif
         int answ = _http->GET();
-        if (answ == -1 && _http) {       // заплатка для есп32
+        if (answ == -1 && _http) {  // заплатка для есп32
             _http->end();
             delete _http;
             _http = new HTTPClient;
-            // постучимся ещё раз
-            #ifdef ESP8266
+// постучимся ещё раз
+#ifdef ESP8266
             if (!_http->begin(client, req)) return 4;  // ошибка подключения
-            #else
+#else
             if (!_http->begin(req)) return 4;
-            #endif
+#endif
             answ = _http->GET();
         }
         uint8_t status = 1;
-        if (answ == HTTP_CODE_OK && _http->getSize()) {     // есть ответ и он не пустой
-            parseRequest(_http->getString());       // парсим
-        } else status = 3;                          // некорректный ответ
+        if (answ == HTTP_CODE_OK && _http->getSize()) {  // есть ответ и он не пустой
+            parseRequest(_http->getString());            // парсим
+        } else status = 3;                               // некорректный ответ
         _http->end();
         return status;
     }
-    
+
     // авто инкремент сообщений (по умолч включен)
     void autoIncrement(boolean incr) {
         _incr = incr;
     }
-    
+
     // вручную инкрементировать ID
     void incrementID(uint8_t val) {
-        if (_incr) ID += val;
+        ID += val;
     }
-    
+
     // для непосредственного редактирования
     String chatIDs;
-    
+
     // ===================== ВРЕМЯ =====================
     // получить текущее unix время
     uint32_t getUnix() {
@@ -813,49 +819,49 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
         }
         return 0;
     }
-    
+
     // получить текущее время, указать часовой пояс в часах или минутах
     FB_Time getTime(int16_t gmt) {
         return FB_Time(getUnix(), gmt);
     }
-    
+
     // проверка, синхронизировано ли время
     bool timeSynced() {
         return _unix;
     }
-    
+
     // ===================== OTA =====================
     // ОТА обновление, вызывать внутри обработчика сообщения по флагу OTA
     uint8_t update(__attribute__((unused)) uint8_t type = FB_FIRMWARE) {
-        #ifndef FB_NO_OTA
+#ifndef FB_NO_OTA
         if (!_file_ptr) return 8;
         OTAflag = type;
         sendMessage((type == FB_FIRMWARE) ? F("OTA firmware...") : F("OTA spiffs..."), _otaID);
 
-        #ifdef ESP8266
+#ifdef ESP8266
         ESPhttpUpdate.rebootOnUpdate(false);
-        #ifdef FB_DYNAMIC
+#ifdef FB_DYNAMIC
         BearSSL::WiFiClientSecure client;
         client.setInsecure();
-        #endif
+#endif
         if (OTAflag == FB_FIRMWARE) OTAstate = ESPhttpUpdate.update(client, *_file_ptr);
         else if (OTAflag == FB_SPIFFS) OTAstate = ESPhttpUpdate.updateFS(client, *_file_ptr);
-        #else
+#else
         WiFiClientSecure client;
         client.setInsecure();
         httpUpdate.rebootOnUpdate(false);
         if (OTAflag == FB_FIRMWARE) OTAstate = httpUpdate.update(client, *_file_ptr);
         else if (OTAflag == FB_SPIFFS) OTAstate = httpUpdate.updateSpiffs(client, *_file_ptr);
-        #endif
-        #endif
+#endif
+#endif
         return 1;
     }
-    
+
     // ОТА обновление SPIFFS, вызывать внутри обработчика сообщения по флагу OTA
     uint8_t updateFS() {
         return update(FB_SPIFFS);
     }
-    
+
     // ===================== FILE =====================
     uint8_t sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, const String& id) {
         return _sendFile(buf, length, type, name, id);
@@ -863,16 +869,16 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
     uint8_t sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name) {
         return sendFile(buf, length, type, name, chatIDs);
     }
-    
+
 #ifdef FS_H
-    uint8_t sendFile(File &file, FB_FileType type, const String& name, const String& id) {
+    uint8_t sendFile(File& file, FB_FileType type, const String& name, const String& id) {
         return _sendFile(file, type, name, id);
     }
-    uint8_t sendFile(File &file, FB_FileType type, const String& name) {
+    uint8_t sendFile(File& file, FB_FileType type, const String& name) {
         return sendFile(file, type, name, chatIDs);
     }
 #endif
-    
+
     uint8_t editFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, int32_t msgid, const String& id) {
         return _editFile(buf, length, type, name, msgid, id);
     }
@@ -881,18 +887,18 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
     }
 
 #ifdef FS_H
-    uint8_t editFile(File &file, FB_FileType type, const String& name, int32_t msgid, const String& id) {
+    uint8_t editFile(File& file, FB_FileType type, const String& name, int32_t msgid, const String& id) {
         return _editFile(file, type, name, msgid, id);
     }
-    uint8_t editFile(File &file, FB_FileType type, const String& name, int32_t msgid) {
+    uint8_t editFile(File& file, FB_FileType type, const String& name, int32_t msgid) {
         return editFile(file, type, name, msgid, chatIDs);
     }
 #endif
-    
+
     // ============================ DOWNLOAD ============================
 #ifdef FS_H
     // скачать файл
-    bool downloadFile(File &f, const String& url) {
+    bool downloadFile(File& f, const String& url) {
         if (!f) return 0;
 #ifdef ESP8266
 #ifdef FB_DYNAMIC
@@ -914,9 +920,11 @@ uint8_t editMessageMenuCallback(int32_t msgid, const String& text, const String&
 #endif
 
     // ============================ PRIVATE ============================
-private:
+   private:
     // конечная строка запроса
-#define FB_END_REQ "\r\n" "--FAST_BOT--"
+#define FB_END_REQ \
+    "\r\n"         \
+    "--FAST_BOT--"
 
     // тип клиента в зависимости от платформы
 #ifdef ESP8266
@@ -929,15 +937,17 @@ private:
     bool _multipartSend(FB_SECURE_CLIENT& client, uint32_t length, FB_FileType type, const String& name, const String& id) {
         if (!client.connect("api.telegram.org", 443)) return 0;
         String startReq;
-        startReq += F("--FAST_BOT" "\r\n");
+        startReq += F(
+            "--FAST_BOT"
+            "\r\n");
         startReq += F("content-disposition: form-data; name=\"");
         switch (type) {
-        case FB_PHOTO: startReq += F("photo"); break;
-        case FB_AUDIO: startReq += F("audio"); break;
-        case FB_DOC: startReq += F("document"); break;
-        case FB_VIDEO: startReq += F("video"); break;
-        case FB_GIF: startReq += F("animation"); break;
-        case FB_VOICE: startReq += F("voice"); break;
+            case FB_PHOTO: startReq += F("photo"); break;
+            case FB_AUDIO: startReq += F("audio"); break;
+            case FB_DOC: startReq += F("document"); break;
+            case FB_VIDEO: startReq += F("video"); break;
+            case FB_GIF: startReq += F("animation"); break;
+            case FB_VOICE: startReq += F("voice"); break;
         }
         startReq += F("\"; filename=\"");
         startReq += name;
@@ -945,12 +955,12 @@ private:
         client.print(F("POST /bot"));
         client.print(_token);
         switch (type) {
-        case FB_PHOTO: client.print(F("/sendPhoto")); break;
-        case FB_AUDIO: client.print(F("/sendAudio")); break;
-        case FB_DOC: client.print(F("/sendDocument")); break;
-        case FB_VIDEO: client.print(F("/sendVideo")); break;
-        case FB_GIF: client.print(F("/sendAnimation")); break;
-        case FB_VOICE: client.print(F("/sendVoice")); break;
+            case FB_PHOTO: client.print(F("/sendPhoto")); break;
+            case FB_AUDIO: client.print(F("/sendAudio")); break;
+            case FB_DOC: client.print(F("/sendDocument")); break;
+            case FB_VIDEO: client.print(F("/sendVideo")); break;
+            case FB_GIF: client.print(F("/sendAnimation")); break;
+            case FB_VOICE: client.print(F("/sendVoice")); break;
         }
         client.print(F("?chat_id="));
         client.print(id);
@@ -961,17 +971,22 @@ private:
         client.print(F("Content-Length: "));
         String endReq = F(FB_END_REQ);
         client.println(String(length + startReq.length() + endReq.length()));
-        client.print(F("Content-Type: multipart/form-data; boundary=" "FAST_BOT" "\r\n\r\n"));
+        client.print(F(
+            "Content-Type: multipart/form-data; boundary="
+            "FAST_BOT"
+            "\r\n\r\n"));
         client.print(startReq);
         return 1;
     }
-    
+
     // ============================ MULTIPART EDIT ============================
     bool _multipartEdit(FB_SECURE_CLIENT& client, uint32_t length, FB_FileType type, const String& name, uint32_t msgid, const String& id) {
         if (!client.connect("api.telegram.org", 443)) return 0;
         String startReq;
         uint16_t rndName = random(0xFFFF);
-        startReq += F("--FAST_BOT" "\r\n");
+        startReq += F(
+            "--FAST_BOT"
+            "\r\n");
         startReq += F("content-disposition: form-data; name=\"");
         startReq += rndName;
         startReq += F("\"; filename=\"");
@@ -985,12 +1000,12 @@ private:
         client.print(msgid);
         client.print("&media={\"type\":\"");
         switch (type) {
-        case FB_PHOTO: client.print(F("photo")); break;
-        case FB_AUDIO: client.print(F("audio")); break;
-        case FB_DOC: client.print(F("document")); break;
-        case FB_VIDEO: client.print(F("video")); break;
-        case FB_GIF: client.print(F("animation")); break;
-        case FB_VOICE: break;
+            case FB_PHOTO: client.print(F("photo")); break;
+            case FB_AUDIO: client.print(F("audio")); break;
+            case FB_DOC: client.print(F("document")); break;
+            case FB_VIDEO: client.print(F("video")); break;
+            case FB_GIF: client.print(F("animation")); break;
+            case FB_VOICE: break;
         }
         client.print(F("\", \"media\":\"attach://"));
         client.print(rndName);
@@ -1002,14 +1017,17 @@ private:
         client.print(F("Content-Length: "));
         String endReq = F(FB_END_REQ);
         client.println(String(length + startReq.length() + endReq.length()));
-        client.print(F("Content-Type: multipart/form-data; boundary=" "FAST_BOT" "\r\n\r\n"));
+        client.print(F(
+            "Content-Type: multipart/form-data; boundary="
+            "FAST_BOT"
+            "\r\n\r\n"));
         client.print(startReq);
         return 1;
     }
 
     // ============================ MULTIPART END ============================
     uint8_t _multipartEnd(FB_SECURE_CLIENT& client) {
-        client.print(F(FB_END_REQ));     // endReq
+        client.print(F(FB_END_REQ));  // endReq
         char prev = '\0';
         while (client.connected()) {
             char cur = client.read();
@@ -1022,7 +1040,7 @@ private:
         client.stop();
         return (parseRequest(resp) ? 1 : 3);  // 1 - ok, 3 - telegram err
     }
-    
+
     // ============================ ROUTINE BUF ============================
     void _sendBufRoutine(FB_SECURE_CLIENT& client, uint8_t* buf, uint32_t length) {
         uint32_t sz = length;
@@ -1034,10 +1052,10 @@ private:
             sz -= len;
         }
     }
-    
+
     // ============================ ROUTINE FILE ============================
 #ifdef FS_H
-    void _sendFileRoutine(FB_SECURE_CLIENT& client, File &file) {
+    void _sendFileRoutine(FB_SECURE_CLIENT& client, File& file) {
         uint8_t buf[FB_BLOCK_SIZE];
         uint32_t sz = file.size();
         while (sz) {
@@ -1053,18 +1071,18 @@ private:
     // макрос создания клиента в зависимости от платформы и настроек
 #ifdef ESP8266
 #ifdef FB_DYNAMIC
-#define FB_DECLARE_CLIENT() \
-        BearSSL::WiFiClientSecure client; \
-        client.setInsecure();
+#define FB_DECLARE_CLIENT()           \
+    BearSSL::WiFiClientSecure client; \
+    client.setInsecure();
 #else
 #define FB_DECLARE_CLIENT()
 #endif
 #else
-#define FB_DECLARE_CLIENT() \
-        WiFiClientSecure client; \
-        client.setInsecure();
+#define FB_DECLARE_CLIENT()  \
+    WiFiClientSecure client; \
+    client.setInsecure();
 #endif
-    
+
     // ============================ SEND BUF ============================
     uint8_t _sendFile(uint8_t* buf, uint32_t length, FB_FileType type, const String& name, const String& id) {
         FB_DECLARE_CLIENT();
@@ -1072,10 +1090,10 @@ private:
         _sendBufRoutine(client, buf, length);
         return _multipartEnd(client);
     }
-    
+
     // ============================ SEND FILE ============================
 #ifdef FS_H
-    uint8_t _sendFile(File &file, FB_FileType type, const String& name, const String& id) {
+    uint8_t _sendFile(File& file, FB_FileType type, const String& name, const String& id) {
         FB_DECLARE_CLIENT();
         if (!_multipartSend(client, file.size(), type, name, id)) return 4;
         _sendFileRoutine(client, file);
@@ -1090,7 +1108,6 @@ private:
         _sendBufRoutine(client, buf, length);
         return _multipartEnd(client);
     }
-    
 
     // ============================ EDIT FILE ============================
 #ifdef FS_H
@@ -1127,7 +1144,7 @@ private:
         if (parseMode == FB_MARKDOWN) s += F("&parse_mode=MarkdownV2");
         else if (parseMode == FB_HTML) s += F("&parse_mode=HTML");
     }
-    
+
     void _addInlineMenu(String& req, const String& str, const String& cbck) {
         req += F("&reply_markup={\"inline_keyboard\":[[{");
         FB_Parser t, cb;
@@ -1141,7 +1158,7 @@ private:
         }
         req += F("}]]}");
     }
-    
+
     void _addInlineButton(String& str, const String& text, const String& cbck) {
         str += F("\"text\":\"");
         str += text;
@@ -1150,7 +1167,7 @@ private:
         str += cbck;
         str += '\"';
     }
-    
+
     // ======================== PARSING =========================
     bool find(const String& str, String& dest, int16_t& start, const String& from, char to, int16_t max) {
         int strPos = str.indexOf(from, start);
@@ -1167,15 +1184,15 @@ private:
         start = end;
         return 1;
     }
-    
+
     bool find(const String& str, const String& text, int16_t start, int16_t end) {
         int16_t strPos = str.indexOf(text, start);
         return (strPos > 0) && (strPos < end);
     }
 
     uint8_t parseMessages(const String& str) {
-        if (!str.startsWith(F("{\"ok\":true"))) return 3;       // ошибка запроса (неправильный токен итд)
-        int16_t IDpos = str.indexOf(F("{\"update_id\":"), 0);   // первая позиция ключа update_id
+        if (!str.startsWith(F("{\"ok\":true"))) return 3;      // ошибка запроса (неправильный токен итд)
+        int16_t IDpos = str.indexOf(F("{\"update_id\":"), 0);  // первая позиция ключа update_id
         if (IDpos < 0) {
             if (ID < 0) ID = 0;
             return 1;
@@ -1185,13 +1202,13 @@ private:
             if (IDpos < 0 || IDpos == (int16_t)str.length()) break;
             bool skip = (ID == -1);
             if (!counter) ID = str.substring(IDpos + 13, str.indexOf(',', IDpos)).toInt() + 1;
-            else counter++;                                                           // иначе считаем пакеты
-            
-            int16_t textPos = IDpos;                                // стартовая позиция для поиска
-            IDpos = str.indexOf(F("{\"update_id\":"), IDpos + 1);   // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
-            if (IDpos < 0) IDpos = str.length();                    // если конец пакета - для удобства считаем что позиция ID в конце
+            else counter++;  // иначе считаем пакеты
+
+            int16_t textPos = IDpos;                               // стартовая позиция для поиска
+            IDpos = str.indexOf(F("{\"update_id\":"), IDpos + 1);  // позиция id СЛЕДУЮЩЕГО обновления (мы всегда на шаг впереди)
+            if (IDpos < 0) IDpos = str.length();                   // если конец пакета - для удобства считаем что позиция ID в конце
             if (skip) continue;
-            
+
             String query;
             int16_t queryEnd = 0;
             if (_query_ptr) _query_ptr = nullptr;
@@ -1199,37 +1216,37 @@ private:
                 _query_ptr = &query;
                 queryEnd = textPos;
             }
-            
+
             bool edited = find(str, F("\"edited_message\":"), textPos, IDpos);
-            
+
             String messageID;
             find(str, messageID, textPos, F("\"message_id\":"), ',', IDpos);
             _lastUsrMsg = messageID.toInt();
-            
-            if (queryEnd) textPos = queryEnd;   // возврат на query id, т.к. отправитель указан там
+
+            if (queryEnd) textPos = queryEnd;  // возврат на query id, т.к. отправитель указан там
             String userID;
             find(str, userID, textPos, F("\"id\":"), ',', IDpos);
-            
+
             String is_bot;
             find(str, is_bot, textPos, F("\"is_bot\":"), ',', IDpos);
-            
+
             String first_name;
             find(str, first_name, textPos, F("\"first_name\":\""), '\"', IDpos);
-            
+
             String chatID;
             find(str, chatID, textPos, F("\"chat\":{\"id\":"), ',', IDpos);
-            
+
             if (!first_name.length()) {
                 int typePos = str.indexOf("\"type\"", textPos);
                 find(str, first_name, textPos, F("\"title\":\""), '\"', typePos);
             }
-            
+
             if (chatIDs.length() > 0 && chatIDs.indexOf(chatID) < 0) continue;  // проверка на ID чата
-            
+
             String date;
             find(str, date, textPos, F("\"date\":"), ',', IDpos);
             bool reply = find(str, F("\"reply_to_message\""), textPos, IDpos);
-            
+
             bool isOTA = false;
             String fileName;
             String fileUrl;
@@ -1248,48 +1265,48 @@ private:
                 req += fileID;
                 sendRequest(req);
             }
-            
+
             // удаление сервисных сообщений
             if (clrSrv) {
                 if (find(str, F("\"new_chat_title\""), textPos, IDpos) ||
-                        find(str, F("\"pinned_message\""), textPos, IDpos)) {
+                    find(str, F("\"pinned_message\""), textPos, IDpos)) {
                     deleteMessage(_lastUsrMsg, chatID);
                     continue;
                 }
             }
-            
+
             String text;
             String replyText;
             if (_file_ptr) find(str, text, textPos, F("\"caption\":\""), '\"', IDpos);
             else find(str, text, textPos, F("\"text\":\""), '\"', IDpos);
-            
+
             if (reply) {
                 replyText = text;
                 find(str, text, textPos, F("\"text\":\""), '\"', IDpos);
             }
-            
+
             String data;
             find(str, data, textPos, F("\"data\":\""), '\"', IDpos);
 
-            #ifdef FB_WITH_LOCATION
+#ifdef FB_WITH_LOCATION
             bool location = find(str, F("\"location\""), textPos, IDpos);
             String lat;
             String lon;
-            FB_Location fb_location {lat, lon};
+            FB_Location fb_location{lat, lon};
             if (location) {
                 find(str, lat, textPos, F("\"latitude\":"), ',', IDpos);
                 find(str, lon, textPos, F("\"longitude\":"), '}', IDpos);
 
                 Serial.printf("Location: lat=%s, lon=%s\n", lat, lon);
             }
-            #endif
+#endif
 
-            #ifndef FB_NO_UNICODE
+#ifndef FB_NO_UNICODE
             FB_unicode(first_name);
             FB_unicode(text);
-            #endif
+#endif
 
-            FB_msg msg = (FB_msg) {
+            FB_msg msg = (FB_msg){
                 userID,
                 first_name,
                 chatID,
@@ -1305,26 +1322,28 @@ private:
                 replyText,
                 (bool)_file_ptr,
                 fileUrl,
-                
+
                 // legacy
                 userID,
                 first_name,
                 first_name,
                 _lastUsrMsg,
-                #ifdef FB_WITH_LOCATION
+                (ID + counter - 1),
+                query,
+#ifdef FB_WITH_LOCATION
                 fb_location
-                #endif
+#endif
             };
             _callback(msg);
-            if (_query_ptr) answer();   // отвечаем на коллбэк, если юзер не ответил
+            if (_query_ptr) answer();  // отвечаем на коллбэк, если юзер не ответил
             _file_ptr = nullptr;
-            if (OTAstate >= 0) break;   // обновление! выходим
+            if (OTAstate >= 0) break;  // обновление! выходим
             yield();
         }
         if (_incr) ID += counter;
         return 1;
     }
-    
+
     bool parseRequest(const String& answ) {
         int16_t st = 0;
         String buf;
@@ -1334,7 +1353,7 @@ private:
             OK = 1;
         }
         if (find(answ, buf, st, F("\"edit_date\":"), ',', answ.length()) ||
-                find(answ, buf, st, F("\"date\":"), ',', answ.length())) {
+            find(answ, buf, st, F("\"date\":"), ',', answ.length())) {
             _unix = buf.toInt();
             _lastUpd = millis();
         }
@@ -1344,18 +1363,17 @@ private:
             *_file_ptr += '/';
             *_file_ptr += buf;
         }
-        if ( find(answ, buf, st, F("\"description\":\""), '\"', answ.length())) {
+        if (find(answ, buf, st, F("\"description\":\""), '\"', answ.length())) {
             _my_desc = buf;
         }
         return OK;
     }
 
-    
-    HTTPClient *_http = nullptr;
-    #if !defined(FB_DYNAMIC) && defined(ESP8266)
+    HTTPClient* _http = nullptr;
+#if !defined(FB_DYNAMIC) && defined(ESP8266)
     BearSSL::WiFiClientSecure client;
-    #endif
-    
+#endif
+
     void (*_callback)(FB_msg& msg) = nullptr;
     String _token;
     String _otaID;
@@ -1373,7 +1391,7 @@ private:
     bool ovfFlag = 0;
     int8_t OTAstate = -1;
     uint8_t OTAflag = 0;
-    
+
     uint32_t _unix = 0;
     uint32_t _lastUpd = 0;
 };
