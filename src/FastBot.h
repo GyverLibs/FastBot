@@ -1328,7 +1328,7 @@ class FastBot {
                 first_name,
                 first_name,
                 _lastUsrMsg,
-                (ID + counter - 1),
+                ID + (int32_t)(counter - 1),
                 query,
 #ifdef FB_WITH_LOCATION
                 fb_location
