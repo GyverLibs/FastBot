@@ -1197,7 +1197,7 @@ class FastBot {
             if (ID < 0) ID = 0;
             return 1;
         }
-        int16_t counter = 0;
+        int32_t counter = 0;
         while (true) {
             if (IDpos < 0 || IDpos == (int16_t)str.length()) break;
             bool skip = (ID == -1);
@@ -1328,7 +1328,7 @@ class FastBot {
                 first_name,
                 first_name,
                 _lastUsrMsg,
-                ID + (int32_t)(counter - 1),
+                ID + counter - 1,
                 query,
 #ifdef FB_WITH_LOCATION
                 fb_location
