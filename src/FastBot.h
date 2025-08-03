@@ -162,7 +162,7 @@ class FastBot {
         chatIDs.reserve(10);
         _token = token;
         _limit = limit;
-        _ovf = ovf;
+        (void)ovf;
         _prd = period;
 #if !defined(FB_DYNAMIC) && defined(ESP8266)
         setBufferSizes(512, 512);
@@ -1380,7 +1380,7 @@ class FastBot {
     String* _file_ptr = nullptr;
     String* _query_ptr = nullptr;
     String _my_desc;
-    uint16_t _ovf, _prd, _limit;
+    uint16_t _prd, _limit;
     int32_t ID = 0;
     uint32_t tmr = 0;
     bool _incr = true;
