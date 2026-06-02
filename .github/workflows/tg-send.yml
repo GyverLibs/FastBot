@@ -8,13 +8,28 @@ jobs:
     name: Send Message
     runs-on: ubuntu-latest
     steps:
-      - name: send telegram message on push
+      - name: Check if major or minor release
+        id: semver
+        shell: bash
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          PATCH="$(echo "$VERSION" | cut -d. -f3)"
+
+          if [[ "$PATCH" == "0" ]]; then
+            echo "should_send=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_send=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: send telegram message on release
+        if: steps.semver.outputs.should_send == 'true'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           disable_web_page_preview: true
           message: |
-            ${{ github.event.repository.name }} v${{ github.event.release.tag_name }}
+            ${{ github.event.repository.name }} ${{ github.event.release.tag_name }}
             ${{ github.event.release.body }}
             https://github.com/${{ github.repository }}
