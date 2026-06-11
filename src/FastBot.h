@@ -668,7 +668,7 @@ class FastBot {
         req += F("&reply_markup={\"keyboard\":[[\"");
         FB_Parser t;
         while (t.parseNT(str)) {
-            req += t.str;
+            FB_urlencode(t.str, req);
             if (t.div == '\t') req += F("\",\"");
             else if (t.div == '\n') req += F("\"],[\"");
         }
@@ -1161,7 +1161,7 @@ class FastBot {
 
     void _addInlineButton(String& str, const String& text, const String& cbck) {
         str += F("\"text\":\"");
-        str += text;
+        FB_urlencode(text, str);
         if (cbck.startsWith(F("http"))) str += F("\",\"url\":\"");
         else str += F("\",\"callback_data\":\"");
         str += cbck;
